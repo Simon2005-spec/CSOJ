@@ -1,0 +1,6 @@
+{
+  "name": "CSOJ Quiz & Code Portal",
+  "description": "An interactive CSOJ-like coding and trắc nghiệm platform with a live in-browser compiler, code editor, and theory quiz grid.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
