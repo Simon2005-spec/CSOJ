@@ -27,10 +27,11 @@ export default function LoginSection({ onLoginSuccess, isDark }: LoginSectionPro
 
     // Simulate network latency
     setTimeout(() => {
-      if (username.trim() === 'simon' && password === '1230') {
-        onLoginSuccess(username.trim());
+      const normalizedUser = username.trim().toLowerCase();
+      if ((normalizedUser === 'simon' || normalizedUser === 'admin') && password === '1230') {
+        onLoginSuccess(normalizedUser);
       } else {
-        setError('Tài khoản hoặc mật khẩu không chính xác. Thử lại với tài khoản "simon" và mật khẩu "1230".');
+        setError('Tài khoản hoặc mật khẩu không chính xác. Thử lại với tài khoản "simon" hoặc "admin" với mật khẩu "1230".');
         setIsLoading(false);
       }
     }, 800);
@@ -126,10 +127,10 @@ export default function LoginSection({ onLoginSuccess, isDark }: LoginSectionPro
           </div>
 
           {/* Prompt/Guide */}
-          <div className="tips-box">
+          <div className="tips-box" style={{ fontSize: '0.825rem', lineHeight: '1.5' }}>
             💡 Gợi ý đăng nhập thử nghiệm:<br />
-            - Tài khoản: <strong>simon</strong><br />
-            - Mật khẩu: <strong>1230</strong>
+            - Học sinh: tài khoản <strong>simon</strong> / mật khẩu <strong>1230</strong><br />
+            - Quản trị viên: tài khoản <strong>admin</strong> / mật khẩu <strong>1230</strong>
           </div>
 
           {/* Submit Button */}

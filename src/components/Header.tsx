@@ -82,13 +82,15 @@ export default function Header({
   };
 
   useEffect(() => {
-    if (isFinished || timeLeft <= 0) return;
+    if (isFinished) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          onSubmit();
+          if (prev === 1) {
+            onSubmit();
+          }
           return 0;
         }
         return prev - 1;
@@ -96,7 +98,7 @@ export default function Header({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, isFinished, onSubmit, setTimeLeft]);
+  }, [isFinished, onSubmit, setTimeLeft]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

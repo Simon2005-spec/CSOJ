@@ -1437,9 +1437,30 @@ html, body, #root {
   animation: pulse-subtle 1.5s infinite;
 }
 
-/* Responsive elements hiding */
+/* Responsive elements hiding and timer/modal scaling */
 @media (max-width: 500px) {
   .hidden-xs {
     display: none !important;
+  }
+  
+  .header-timer-label {
+    display: none !important;
+  }
+  
+  .header-timer-pill {
+    padding: 0.2rem 0.5rem !important;
+    font-size: 0.75rem !important;
+    gap: 0.25rem !important;
+  }
+
+  .modal-overlay {
+    padding: 0.75rem !important;
+  }
+
+  .modal-card {
+    max-width: 100% !important;
+    border-radius: 1.25rem !important;
+    padding: 1.25rem !important;
+    gap: 1rem !important;
   }
 }

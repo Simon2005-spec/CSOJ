@@ -34,6 +34,13 @@ export default function CodeSection({
     return problems.find((p) => p.id === currentProblemId) || problems[0];
   }, [problems, currentProblemId]);
 
+  // Sync currentProblemId if the currently selected problem no longer exists
+  useEffect(() => {
+    if (problems.length > 0 && !problems.some((p) => p.id === currentProblemId)) {
+      setCurrentProblemId(problems[0].id);
+    }
+  }, [problems, currentProblemId, setCurrentProblemId]);
+
   const [selectedLang, setSelectedLang] = useState<SupportedLanguage>('javascript');
   const [code, setCode] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -45,6 +52,7 @@ export default function CodeSection({
 
   // Sync textarea code with local state when problem, language or reset state changes
   useEffect(() => {
+    if (!problem) return;
     const saved = codingAnswers[problem.id];
     if (saved && (saved as any).codes && (saved as any).codes[selectedLang] !== undefined) {
       setCode((saved as any).codes[selectedLang]);
@@ -53,7 +61,7 @@ export default function CodeSection({
     } else {
       setCode(problem.defaultCode[selectedLang as keyof typeof problem.defaultCode] || '');
     }
-  }, [problem.id, selectedLang, Object.keys(codingAnswers).length === 0]);
+  }, [problem?.id, selectedLang, Object.keys(codingAnswers).length === 0]);
 
   // Synchronize scrolling of code editor and line numbers gutter
   const handleScroll = () => {
@@ -69,6 +77,7 @@ export default function CodeSection({
   }, [code]);
 
   const handleCodeChange = (newCode: string) => {
+    if (!problem) return;
     setCode(newCode);
     setCodingAnswers((prev) => {
       const prevProblem = prev[problem.id] || {
@@ -93,6 +102,7 @@ export default function CodeSection({
   };
 
   const handleLanguageChange = (lang: SupportedLanguage) => {
+    if (!problem) return;
     setSelectedLang(lang);
     setCodingAnswers((prev) => {
       const prevProblem = prev[problem.id];
@@ -140,6 +150,7 @@ export default function CodeSection({
   };
 
   const runCode = async () => {
+    if (!problem) return;
     setIsRunning(true);
     setConsoleLogs([{ type: 'info', message: t.initRunner }]);
 
@@ -199,12 +210,30 @@ export default function CodeSection({
   };
 
   const submitCode = async () => {
+    if (!problem) return;
     setIsSubmitting(true);
     setConsoleLogs((prev) => [...prev, { type: 'info', message: t.submittingToJudge }]);
     await new Promise((resolve) => setTimeout(resolve, 1000));
     await runCode();
     setIsSubmitting(false);
   };
+
+  if (!problem) {
+    return (
+      <div className="workspace-wrapper" id="coding-workspace-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', padding: '2rem' }}>
+        <div className="liquid-glass" style={{ padding: '2.5rem', textAlign: 'center', borderRadius: '1rem', border: '1px solid var(--border-element)', maxWidth: '500px', background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(10px)' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+            {language === 'vi' ? 'Chưa có bài thi nào' : 'There are no exam problems yet'}
+          </h2>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
+            {language === 'vi' 
+              ? 'Hiện tại hệ thống chưa có câu hỏi/bài thi nào được nạp. Vui lòng quay lại sau.'
+              : 'There are currently no questions/exams loaded in the system. Please come back later.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="workspace-wrapper" id="coding-workspace-container">

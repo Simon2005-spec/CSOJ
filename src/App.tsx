@@ -3,7 +3,9 @@ import Header from './components/Header';
 import CodeSection from './components/CodeSection';
 import HomeSection from './components/HomeSection';
 import LoginSection from './components/LoginSection';
+import AdminSection from './components/AdminSection';
 import { CODING_PROBLEMS } from './data/codingProblems';
+import { CodingProblem } from './types';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // In-memory fallback dictionary for restricted third-party / sandbox iframes
@@ -78,9 +80,54 @@ export default function App() {
     return saved !== null ? saved === 'true' : true;
   });
 
+  // 1.5 Dynamic Problems State (synchronized with localStorage)
+  const [problems, setProblems] = useState<CodingProblem[]>(() => {
+    try {
+      const saved = safeStorage.getItem('csoj_problems');
+      return saved ? JSON.parse(saved) : CODING_PROBLEMS;
+    } catch (e) {
+      return CODING_PROBLEMS;
+    }
+  });
+
   // 2. Navigation States
   const [activeTab, setActiveTab] = useState<'home' | 'coding'>('home');
-  const [currentProblemId, setCurrentProblemId] = useState(CODING_PROBLEMS[0].id);
+  const [currentProblemId, setCurrentProblemId] = useState(() => {
+    try {
+      const saved = safeStorage.getItem('csoj_problems');
+      const probs = saved ? JSON.parse(saved) : CODING_PROBLEMS;
+      return probs[0]?.id || '';
+    } catch (e) {
+      return CODING_PROBLEMS[0]?.id || '';
+    }
+  });
+
+  // Sync problems list
+  useEffect(() => {
+    safeStorage.setItem('csoj_problems', JSON.stringify(problems));
+  }, [problems]);
+
+  // Handle adding new problem
+  const handleAddProblem = (newProb: CodingProblem) => {
+    setProblems((prev) => {
+      const filtered = prev.filter((p) => p.id !== newProb.id);
+      return [...filtered, newProb];
+    });
+    if (!currentProblemId) {
+      setCurrentProblemId(newProb.id);
+    }
+  };
+
+  // Handle removing a problem
+  const handleRemoveProblem = (problemId: string) => {
+    setProblems((prev) => {
+      const updated = prev.filter((p) => p.id !== problemId);
+      if (currentProblemId === problemId) {
+        setCurrentProblemId(updated[0]?.id || '');
+      }
+      return updated;
+    });
+  };
 
   // 4. Persistence in localStorage
   useEffect(() => {
@@ -134,7 +181,7 @@ export default function App() {
     safeStorage.removeItem('csoj_coding_answers');
     setTimeLeft(5400);
     setCodingAnswers({});
-    setCurrentProblemId(CODING_PROBLEMS[0].id);
+    setCurrentProblemId(problems[0]?.id || '');
     setActiveTab('home');
   };
 
@@ -142,12 +189,34 @@ export default function App() {
   const handleResetCoding = () => {
     safeStorage.removeItem('csoj_coding_answers');
     setCodingAnswers({});
-    setCurrentProblemId(CODING_PROBLEMS[0].id);
+    setCurrentProblemId(problems[0]?.id || '');
     setActiveTab('coding');
   };
 
   if (!isLoggedIn) {
     return <LoginSection onLoginSuccess={handleLoginSuccess} isDark={isDark} />;
+  }
+
+  if (username === 'admin') {
+    return (
+      <div className={`csoj-app-wrapper ${isDark ? 'dark' : ''}`} id="csoj-root-application" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {/* Floating background decorations */}
+        <div className="ambient-blobs-container">
+          <div className="ambient-blob ambient-blob-1" />
+          <div className="ambient-blob ambient-blob-2" />
+          <div className="ambient-blob ambient-blob-3" />
+        </div>
+        
+        <main style={{ flex: 1, overflowY: 'auto', position: 'relative', zIndex: 10 }}>
+          <AdminSection
+            problems={problems}
+            onAddProblem={handleAddProblem}
+            onRemoveProblem={handleRemoveProblem}
+            onLogout={handleLogout}
+          />
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -191,6 +260,7 @@ export default function App() {
               style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
               <HomeSection
+                problems={problems}
                 codingAnswers={codingAnswers}
                 isDark={isDark}
                 setIsDark={setIsDark}
@@ -212,7 +282,7 @@ export default function App() {
               style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
               <CodeSection
-                problems={CODING_PROBLEMS}
+                problems={problems}
                 currentProblemId={currentProblemId}
                 setCurrentProblemId={setCurrentProblemId}
                 codingAnswers={codingAnswers}

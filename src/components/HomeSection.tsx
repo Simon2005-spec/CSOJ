@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Code, Settings, LogOut, Clock, Eye, RotateCcw, ArrowRight, Sun, Moon, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CodingProblem } from '../types';
 
 interface HomeSectionProps {
+  problems: CodingProblem[];
   codingAnswers: {
     [problemId: string]: { code: string; language: string; passed: boolean };
   };
@@ -78,6 +80,7 @@ const translations = {
 };
 
 export default function HomeSection({
+  problems,
   codingAnswers,
   isDark,
   setIsDark,
@@ -95,7 +98,7 @@ export default function HomeSection({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const passedCodingCount = Object.values(codingAnswers).filter((ans) => ans.passed).length;
-  const codingProgressPercent = (passedCodingCount / 3) * 100;
+  const codingProgressPercent = problems.length > 0 ? (passedCodingCount / problems.length) * 100 : 0;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -194,94 +197,120 @@ export default function HomeSection({
 
         {/* 3. Main Practice Card */}
         <div className="card-grid-container">
-          <div className="dashboard-card-wrap">
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="csoj-card liquid-glass"
-            >
-              <div className="card-decorative-glow" />
-
-              <div className="card-header-row">
-                <div className="card-icon-badge">
-                  <Code size={18} />
+          {problems.length === 0 ? (
+            <div className="dashboard-card-wrap">
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="csoj-card liquid-glass"
+                style={{ textAlign: 'center', padding: '3rem 2rem' }}
+              >
+                <div className="card-decorative-glow" />
+                <div style={{ color: 'var(--text-muted)', fontSize: '1.125rem', fontWeight: 500 }}>
+                  {language === 'vi' ? 'Chưa có bài thi nào' : 'There are no exam problems yet'}
                 </div>
-                <div className="card-duration-badge">
-                  <Clock size={13} style={{ color: '#10b981' }} />
-                  <span>{t.duration}</span>
-                </div>
-              </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.5rem', opacity: 0.8 }}>
+                  {language === 'vi' 
+                    ? 'Vui lòng quay lại sau hoặc liên hệ quản trị viên để nạp câu hỏi.'
+                    : 'Please come back later or contact the administrator to add problems.'}
+                </p>
+              </motion.div>
+            </div>
+          ) : (
+            <div className="dashboard-card-wrap">
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="csoj-card liquid-glass"
+              >
+                <div className="card-decorative-glow" />
 
-              <div className="card-title-block">
-                <h3 className="card-title">{t.codingTitle}</h3>
-                <p className="card-description">{t.codingDesc}</p>
-              </div>
-
-              <div className="card-footer-box">
-                {Object.keys(codingAnswers).length > 0 && (
-                  <div className="score-panel">
-                    <div className="score-row">
-                      <span className="score-title">{t.codingScoreLabel}</span>
-                      <span className="score-number">
-                        {((passedCodingCount / 3) * 10).toFixed(1)} / 10.0
-                      </span>
-                    </div>
-                    <div className="score-subtitle">
-                      {passedCodingCount}/3 {t.passedProblems}
-                    </div>
+                <div className="card-header-row">
+                  <div className="card-icon-badge">
+                    <Code size={18} />
                   </div>
-                )}
-
-                <div>
-                  <div className="progress-label-row">
-                    <span className="progress-label">{t.codingProgress}</span>
-                    <span className="progress-text">{passedCodingCount}/3 {t.passed}</span>
-                  </div>
-                  <div className="progress-container" style={{ marginTop: '0.375rem' }}>
-                    <div className="progress-bar-fill" style={{ width: `${codingProgressPercent}%` }} />
+                  <div className="card-duration-badge">
+                    <Clock size={13} style={{ color: '#10b981' }} />
+                    <span>{t.duration}</span>
                   </div>
                 </div>
 
-                {Object.keys(codingAnswers).length > 0 ? (
-                  <div className="card-action-grid">
-                    <button onClick={() => onSelectTab('coding')} className="csoj-btn csoj-btn-primary">
-                      <Eye size={13} />
-                      <span>{t.actionReview}</span>
-                    </button>
-                    {showResetCodingConfirm ? (
-                      <div style={{ display: 'flex', gap: '0.375rem' }}>
-                        <button
-                          onClick={() => { onResetCoding(); setShowResetCodingConfirm(false); }}
-                          className="csoj-btn csoj-btn-danger"
-                          style={{ flex: 1, padding: '0.375rem' }}
-                        >
-                          {t.agree}
-                        </button>
-                        <button
-                          onClick={() => setShowResetCodingConfirm(false)}
-                          className="csoj-btn csoj-btn-secondary"
-                          style={{ flex: 1, padding: '0.375rem' }}
-                        >
-                          {t.cancel}
-                        </button>
+                <div className="card-title-block">
+                  <h3 className="card-title">{t.codingTitle}</h3>
+                  <p className="card-description">
+                    {language === 'vi' 
+                      ? `Giải quyết ${problems.length} bài toán thuật toán từ dễ đến trung bình với trình biên dịch tự động, hỗ trợ JavaScript, Python, C++, Java.`
+                      : `Solve ${problems.length} algorithmic problems from easy to medium with automated online compiler supporting JS, Python, C++, Java.`}
+                  </p>
+                </div>
+
+                <div className="card-footer-box">
+                  {Object.keys(codingAnswers).length > 0 && (
+                    <div className="score-panel">
+                      <div className="score-row">
+                        <span className="score-title">{t.codingScoreLabel}</span>
+                        <span className="score-number">
+                          {((passedCodingCount / (problems.length || 1)) * 10).toFixed(1)} / 10.0
+                        </span>
                       </div>
-                    ) : (
-                      <button onClick={() => setShowResetCodingConfirm(true)} className="csoj-btn csoj-btn-outline">
-                        <RotateCcw size={13} style={{ color: '#6366f1' }} />
-                        <span>{t.actionRetake}</span>
-                      </button>
-                    )}
+                      <div className="score-subtitle">
+                        {passedCodingCount}/{problems.length} {t.passedProblems}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="progress-label-row">
+                      <span className="progress-label">{t.codingProgress}</span>
+                      <span className="progress-text">{passedCodingCount}/{problems.length} {t.passed}</span>
+                    </div>
+                    <div className="progress-container" style={{ marginTop: '0.375rem' }}>
+                      <div className="progress-bar-fill" style={{ width: `${codingProgressPercent}%` }} />
+                    </div>
                   </div>
-                ) : (
-                  <button onClick={() => onSelectTab('coding')} className="csoj-btn csoj-btn-primary btn-full-width">
-                    <span>{codingProgressPercent > 0 ? t.codingActionContinue : t.codingActionStart}</span>
-                    <ArrowRight size={13} />
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </div>
+
+                  {Object.keys(codingAnswers).length > 0 ? (
+                    <div className="card-action-grid">
+                      <button onClick={() => onSelectTab('coding')} className="csoj-btn csoj-btn-primary">
+                        <Eye size={13} />
+                        <span>{t.actionReview}</span>
+                      </button>
+                      {showResetCodingConfirm ? (
+                        <div style={{ display: 'flex', gap: '0.375rem' }}>
+                          <button
+                            onClick={() => { onResetCoding(); setShowResetCodingConfirm(false); }}
+                            className="csoj-btn csoj-btn-danger"
+                            style={{ flex: 1, padding: '0.375rem' }}
+                          >
+                            {t.agree}
+                          </button>
+                          <button
+                            onClick={() => setShowResetCodingConfirm(false)}
+                            className="csoj-btn csoj-btn-secondary"
+                            style={{ flex: 1, padding: '0.375rem' }}
+                          >
+                            {t.cancel}
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setShowResetCodingConfirm(true)} className="csoj-btn csoj-btn-outline">
+                          <RotateCcw size={13} style={{ color: '#6366f1' }} />
+                          <span>{t.actionRetake}</span>
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <button onClick={() => onSelectTab('coding')} className="csoj-btn csoj-btn-primary btn-full-width">
+                      <span>{codingProgressPercent > 0 ? t.codingActionContinue : t.codingActionStart}</span>
+                      <ArrowRight size={13} />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
         </div>
       </div>
 
