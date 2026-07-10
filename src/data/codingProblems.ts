@@ -50,19 +50,6 @@ export const CODING_PROBLEMS: CodingProblem[] = [
         seen[num] = i
     return []
 `,
-      javascript: `function twoSum(nums, target) {
-    // Viết code của bạn ở đây
-    const seen = new Map();
-    for (let i = 0; i < nums.length; i++) {
-        const complement = target - nums[i];
-        if (seen.has(complement)) {
-            return [seen.get(complement), i];
-        }
-        seen.set(nums[i], i);
-    }
-    return [];
-}
-`,
       cpp: `#include <iostream>
 #include <vector>
 #include <unordered_map>
@@ -92,32 +79,26 @@ int main() {
     return 0;
 }
 `,
-      java: `import java.util.*;
-
-public class Main {
-    public static int[] twoSum(int[] nums, int target) {
-        Map<Integer, Integer> seen = new HashMap<>();
-        for (int i = 0; i < nums.length; i++) {
-            int complement = target - nums[i];
-            if (seen.containsKey(complement)) {
-                return new int[] { seen.get(complement), i };
-            }
-            seen.put(nums[i], i);
-        }
-        return new int[0];
-    }
-
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        if (!sc.hasNextInt()) return;
-        int n = sc.nextInt();
-        int[] nums = new int[n];
-        for (int i = 0; i < n; i++) nums[i] = sc.nextInt();
-        int target = sc.nextInt();
-        int[] ans = twoSum(nums, target);
-        System.out.println(ans[0] + " " + ans[1]);
-    }
-}
+      pascal: `function twoSum(nums: array of integer; target: integer): array of integer;
+var
+    i, j: integer;
+    res: array of integer;
+begin
+    SetLength(res, 2);
+    for i := 0 to Length(nums) - 2 do
+    begin
+        for j := i + 1 to Length(nums) - 1 do
+        begin
+            if nums[i] + nums[j] = target then
+            begin
+                res[0] := i;
+                res[1] := j;
+                exit(res);
+            end;
+        end;
+    end;
+    exit(res);
+end;
 `
     },
     testCases: [
@@ -185,22 +166,6 @@ public class Main {
         
     return x == reverted_number or x == reverted_number // 10
 `,
-      javascript: `function isPalindrome(x) {
-    // Viết code của bạn ở đây
-    if (x < 0 || (x % 10 === 0 && x !== 0)) {
-        return false;
-    }
-    
-    let revertedNumber = 0;
-    let temp = x;
-    while (temp > revertedNumber) {
-        revertedNumber = revertedNumber * 10 + (temp % 10);
-        temp = Math.floor(temp / 10);
-    }
-    
-    return temp === revertedNumber || temp === Math.floor(revertedNumber / 10);
-}
-`,
       cpp: `#include <iostream>
 
 using namespace std;
@@ -225,29 +190,23 @@ int main() {
     return 0;
 }
 `,
-      java: `import java.util.*;
-
-public class Main {
-    public static boolean isPalindrome(int x) {
-        if (x < 0 || (x % 10 == 0 && x != 0)) {
-            return false;
-        }
-        int revertedNumber = 0;
-        while (x > revertedNumber) {
-            revertedNumber = revertedNumber * 10 + x % 10;
-            x /= 10;
-        }
-        return x == revertedNumber || x == revertedNumber / 10;
-    }
-
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        if (sc.hasNextInt()) {
-            int x = sc.nextInt();
-            System.out.println(isPalindrome(x) ? "true" : "false");
-        }
-    }
-}
+      pascal: `function isPalindrome(x: integer): boolean;
+var
+    reverted, temp: integer;
+begin
+    if (x < 0) or ((x mod 10 = 0) and (x <> 0)) then
+        exit(false);
+        
+    reverted := 0;
+    temp := x;
+    while temp > reverted do
+    begin
+        reverted := reverted * 10 + (temp mod 10);
+        temp := temp div 10;
+    end;
+    
+    exit((temp = reverted) or (temp = reverted div 10));
+end;
 `
     },
     testCases: [
@@ -324,28 +283,6 @@ public class Main {
             stack.append(char)
     return not stack
 `,
-      javascript: `function isValid(s) {
-    // Viết code của bạn ở đây
-    const stack = [];
-    const mapping = {
-        ')': '(',
-        '}': '{',
-        ']': '['
-    };
-    for (let i = 0; i < s.length; i++) {
-        const char = s[i];
-        if (mapping[char]) {
-            const topElement = stack.length > 0 ? stack.pop() : '#';
-            if (mapping[char] !== topElement) {
-                return false;
-            }
-        } else {
-            stack.push(char);
-        }
-    }
-    return stack.length === 0;
-}
-`,
       cpp: `#include <iostream>
 #include <stack>
 #include <unordered_map>
@@ -379,38 +316,31 @@ int main() {
     return 0;
 }
 `,
-      java: `import java.util.*;
-
-public class Main {
-    public static boolean isValid(String s) {
-        Stack<Character> stack = new Stack<>();
-        Map<Character, Character> mapping = new HashMap<>();
-        mapping.put(')', '(');
-        mapping.put('}', '{');
-        mapping.put(']', '[');
-        
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (mapping.containsKey(c)) {
-                char topElement = stack.isEmpty() ? '#' : stack.pop();
-                if (topElement != mapping.get(c)) {
-                    return false;
-                }
-            } else {
-                stack.push(c);
-            }
-        }
-        return stack.isEmpty();
-    }
-
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        if (sc.hasNext()) {
-            String s = sc.next();
-            System.out.println(isValid(s) ? "true" : "false");
-        }
-    }
-}
+      pascal: `function isValid(s: string): boolean;
+var
+    stack: string;
+    i: integer;
+    c, top: char;
+begin
+    stack := '';
+    for i := 1 to Length(s) do
+    begin
+        c := s[i];
+        if (c = '(') or (c = '{') or (c = '[') then
+            stack := stack + c
+        else
+        begin
+            if Length(stack) = 0 then
+                exit(false);
+            top := stack[Length(stack)];
+            Delete(stack, Length(stack), 1);
+            if (c = ')') and (top <> '(') then exit(false);
+            if (c = '}') and (top <> '{') then exit(false);
+            if (c = ']') and (top <> '[') then exit(false);
+        end;
+    end;
+    exit(Length(stack) = 0);
+end;
 `
     },
     testCases: [

@@ -23,7 +23,7 @@ export interface CodingProblem {
   }[];
 }
 
-export type SupportedLanguage = 'javascript' | 'python' | 'cpp' | 'java';
+export type SupportedLanguage = 'cpp' | 'python' | 'pascal';
 
 export interface UserSubmission {
   codingAnswers: { [problemId: string]: { code: string; language: string; passed: boolean } };

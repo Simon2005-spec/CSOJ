@@ -24,7 +24,7 @@ const translations = {
     subtitle: "Hệ thống đánh giá kỹ năng thuật toán, cấu trúc dữ liệu và tối ưu mã nguồn toàn diện.",
     cta: "Nhấn vào nút bên dưới để bắt đầu hoặc tiếp tục phần thi thực hành lập trình.",
     codingTitle: "Lập trình Thực hành (Tự luận)",
-    codingDesc: "Giải quyết 3 bài toán thuật toán từ dễ đến trung bình với trình biên dịch tự động, hỗ trợ JavaScript, Python, C++, Java.",
+    codingDesc: "Giải quyết các bài toán thuật toán từ dễ đến trung bình với trình biên dịch tự động, hỗ trợ C++ 2017, Python 3, Pascal.",
     codingProgress: "Tiến trình",
     codingActionStart: "Bắt đầu lập trình",
     codingActionContinue: "Tiếp tục lập trình",
@@ -53,7 +53,7 @@ const translations = {
     subtitle: "A comprehensive evaluation system for algorithmic skills, data structures, and code optimization.",
     cta: "Click the button below to start or continue your programming practical exam.",
     codingTitle: "Practical Programming (Coding)",
-    codingDesc: "Solve 3 algorithmic problems from easy to medium with automated online compiler supporting JS, Python, C++, Java.",
+    codingDesc: "Solve algorithmic problems from easy to medium with an automated online compiler supporting C++ 2017, Python 3, Pascal.",
     codingProgress: "Progress",
     codingActionStart: "Start Coding",
     codingActionContinue: "Continue Coding",
@@ -240,9 +240,7 @@ export default function HomeSection({
                 <div className="card-title-block">
                   <h3 className="card-title">{t.codingTitle}</h3>
                   <p className="card-description">
-                    {language === 'vi' 
-                      ? `Giải quyết ${problems.length} bài toán thuật toán từ dễ đến trung bình với trình biên dịch tự động, hỗ trợ JavaScript, Python, C++, Java.`
-                      : `Solve ${problems.length} algorithmic problems from easy to medium with automated online compiler supporting JS, Python, C++, Java.`}
+                    {t.codingDesc}
                   </p>
                 </div>
 

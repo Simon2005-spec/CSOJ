@@ -61,9 +61,8 @@ export default function AdminSection({
 
   // Customizable Boilerplate Code Templates
   const [customPython, setCustomPython] = useState('');
-  const [customJs, setCustomJs] = useState('');
+  const [customPascal, setCustomPascal] = useState('');
   const [customCpp, setCustomCpp] = useState('');
-  const [customJava, setCustomJava] = useState('');
   const [isUsingAutoTemplates, setIsUsingAutoTemplates] = useState(true);
 
   // Success / Error Alerts
@@ -105,10 +104,13 @@ export default function AdminSection({
     return None
 `);
 
-      setCustomJs(`function ${entryFunctionName}(${argsList}) {
+      setCustomPascal(`function ${entryFunctionName}(${parsedInputNames.map(name => `${name}: integer`).join('; ')}): integer;
+var
+    // Khai báo biến tại đây nếu cần thiết
+begin
     // Viết code của bạn ở đây
-    return null;
-}
+    exit(0);
+end;
 `);
 
       setCustomCpp(`#include <iostream>
@@ -127,22 +129,6 @@ int main() {
     int ${parsedInputNames.join(', ')};
     // Đọc dữ liệu từ cin và gọi hàm xử lý của bạn
     return 0;
-}
-`);
-
-      setCustomJava(`import java.util.*;
-
-public class Main {
-    // Thay đổi kiểu dữ liệu trả về và tham số nếu cần thiết
-    public static int ${entryFunctionName}(${parsedInputNames.map(name => `int ${name}`).join(', ')}) {
-        // Viết code của bạn ở đây
-        return 0;
-    }
-
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        // Đọc dữ liệu đầu vào và gọi hàm xử lý của bạn
-    }
 }
 `);
     }
@@ -209,10 +195,9 @@ public class Main {
     setConstraints(['Thời gian chạy tối đa: 1.0 giây', 'Bộ nhớ tối đa: 256 MB']);
     setExamples([]);
     setTestCases([]);
-    setCustomJs('');
+    setCustomPascal('');
     setCustomPython('');
     setCustomCpp('');
-    setCustomJava('');
     setIsUsingAutoTemplates(true);
     setAdminTab('add');
   };
@@ -337,9 +322,8 @@ public class Main {
       inputNames: parsedInputNames,
       defaultCode: {
         python: customPython || `def ${entryFunctionName}(${parsedInputNames.join(', ')}):\n    pass`,
-        javascript: customJs || `function ${entryFunctionName}(${parsedInputNames.join(', ')}) {\n}`,
         cpp: customCpp,
-        java: customJava
+        pascal: customPascal || `function ${entryFunctionName}(${parsedInputNames.map(name => `${name}: integer`).join('; ')}): integer;\nbegin\nend;`
       },
       testCases: validatedTestCases
     };
@@ -846,21 +830,6 @@ public class Main {
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-              {/* JS Boilerplate */}
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem', color: '#f59e0b' }}>JavaScript Template</label>
-                <textarea
-                  rows={6}
-                  value={customJs}
-                  onChange={(e) => {
-                    setCustomJs(e.target.value);
-                    setIsUsingAutoTemplates(false);
-                  }}
-                  className="csoj-input"
-                  style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', whiteSpace: 'pre', background: '#0f172a' }}
-                />
-              </div>
-
               {/* Python Boilerplate */}
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.75rem', color: '#3b82f6' }}>Python Template</label>
@@ -891,14 +860,14 @@ public class Main {
                 />
               </div>
 
-              {/* Java Boilerplate */}
+              {/* Pascal Boilerplate */}
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem', color: '#a855f7' }}>Java Template</label>
+                <label className="form-label" style={{ fontSize: '0.75rem', color: '#f59e0b' }}>Pascal Template</label>
                 <textarea
                   rows={6}
-                  value={customJava}
+                  value={customPascal}
                   onChange={(e) => {
-                    setCustomJava(e.target.value);
+                    setCustomPascal(e.target.value);
                     setIsUsingAutoTemplates(false);
                   }}
                   className="csoj-input"

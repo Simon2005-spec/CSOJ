@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { CodingProblem, SupportedLanguage } from '../types';
 import { translations } from '../locales/translations';
-import { runJavaScript } from '../lib/judge';
+import { evaluateCode } from '../lib/judge';
 import { Play, CheckSquare, Terminal, ChevronRight, CheckCircle2, Circle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -41,7 +41,7 @@ export default function CodeSection({
     }
   }, [problems, currentProblemId, setCurrentProblemId]);
 
-  const [selectedLang, setSelectedLang] = useState<SupportedLanguage>('javascript');
+  const [selectedLang, setSelectedLang] = useState<SupportedLanguage>('cpp');
   const [code, setCode] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -156,55 +156,32 @@ export default function CodeSection({
 
     await new Promise((resolve) => setTimeout(resolve, 800));
 
-    if (selectedLang === 'javascript') {
-      try {
-        setConsoleLogs((prev) => [...prev, { type: 'info', message: t.runningOnTestcases }]);
-        
-        const results = runJavaScript(code, problem, language);
-        const allPassed = results.every(r => r.passed);
-
-        setConsoleLogs((prev) => [
-          ...prev,
-          ...results.map((r) => ({
-            type: (r.passed ? 'stdout' : 'error') as any,
-            message: r.message
-          })),
-          {
-            type: allPassed ? 'success' : 'error',
-            message: allPassed ? t.allPassedMsg : t.incorrectLogicMsg
-          }
-        ]);
-
-        setCodingAnswers((prev) => ({
-          ...prev,
-          [problem.id]: { ...prev[problem.id], passed: allPassed }
-        }));
-      } catch (err: any) {
-        setConsoleLogs((prev) => [...prev, { type: 'error', message: `${t.jsError} ${err.message}` }]);
-      }
-    } else {
-      setConsoleLogs((prev) => [...prev, { type: 'info', message: t.compilingMsg.replace('{lang}', selectedLang.toUpperCase()) }]);
+    try {
+      const displayLangName = selectedLang === 'cpp' ? 'C++ 2017' : selectedLang === 'python' ? 'Python 3' : 'Pascal';
+      setConsoleLogs((prev) => [...prev, { type: 'info', message: t.compilingMsg.replace('{lang}', displayLangName) }]);
       await new Promise((resolve) => setTimeout(resolve, 600));
 
-      const keyword = problem.entryFunctionName;
-      const adjustedKeyword = selectedLang === 'python' 
-        ? keyword.replace(/([A-Z])/g, "_$1").toLowerCase()
-        : keyword;
+      const results = evaluateCode(code, selectedLang, problem, language);
+      const allPassed = results.every(r => r.passed);
 
-      if (!code.includes(adjustedKeyword)) {
-        setConsoleLogs((prev) => [...prev, { type: 'error', message: t.missingFunctionMsg.replace('{funcName}', adjustedKeyword) }]);
-      } else {
-        setConsoleLogs((prev) => [
-          ...prev,
-          { type: 'success', message: 'Testcase 1: PASSED' },
-          { type: 'success', message: 'Testcase 2: PASSED' },
-          { type: 'success', message: t.simulatedSuccess.replace('{lang}', selectedLang.toUpperCase()) }
-        ]);
-        setCodingAnswers((prev) => ({
-          ...prev,
-          [problem.id]: { ...prev[problem.id], passed: true }
-        }));
-      }
+      setConsoleLogs((prev) => [
+        ...prev,
+        ...results.map((r) => ({
+          type: (r.passed ? 'stdout' : 'error') as any,
+          message: r.message
+        })),
+        {
+          type: allPassed ? 'success' : 'error',
+          message: allPassed ? t.allPassedMsg : t.incorrectLogicMsg
+        }
+      ]);
+
+      setCodingAnswers((prev) => ({
+        ...prev,
+        [problem.id]: { ...prev[problem.id], passed: allPassed, code, language: selectedLang }
+      }));
+    } catch (err: any) {
+      setConsoleLogs((prev) => [...prev, { type: 'error', message: err.message }]);
     }
     setIsRunning(false);
   };
@@ -313,10 +290,9 @@ export default function CodeSection({
                 onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
                 className="lang-selector"
               >
-                <option value="javascript">JavaScript (ES6)</option>
+                <option value="cpp">C++ 2017</option>
                 <option value="python">Python 3</option>
-                <option value="cpp">C++ (GCC 17)</option>
-                <option value="java">Java (OpenJDK 17)</option>
+                <option value="pascal">Pascal</option>
               </select>
             </div>
 
