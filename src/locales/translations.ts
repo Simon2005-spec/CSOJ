@@ -52,7 +52,7 @@ export const translations = {
     compilingMsg: "⚙️ Biên dịch mã nguồn và gán biến kiểm thử...",
     missingFunctionMsg: "❌ Lỗi biên dịch: Không tìm thấy khai báo hàm '{funcName}' yêu cầu trong mã nguồn.",
     simulatedSuccess: "🎉 [Mô phỏng] Toàn bộ testcases mẫu đã hoàn thành kiểm thử thành công!",
-    submittingToJudge: "⏳ Đang nộp bài lên CSOJ Judge..."
+    submittingToJudge: "⏳ Đang nộp bài lên NHCOJ Judge..."
   },
   en: {
     // General
@@ -106,6 +106,6 @@ export const translations = {
     compilingMsg: "⚙️ Compiling and assigning test inputs...",
     missingFunctionMsg: "❌ Compilation Error: Function '{funcName}' could not be resolved in code.",
     simulatedSuccess: "🎉 [Simulated] All test cases completed successfully!",
-    submittingToJudge: "⏳ Submitting solution to CSOJ Judge..."
+    submittingToJudge: "⏳ Submitting solution to NHCOJ Judge..."
   }
 };

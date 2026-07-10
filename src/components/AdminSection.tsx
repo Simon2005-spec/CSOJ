@@ -351,7 +351,7 @@ int main() {
             <span style={{ display: 'inline-flex', padding: '0.375rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '0.5rem' }}>
               <Settings size={20} className="spin-slow" />
             </span>
-            <h1 className="problem-title" style={{ margin: 0, fontSize: '1.5rem' }}>Tài Khoản Quản Trị CSOJ</h1>
+            <h1 className="problem-title" style={{ margin: 0, fontSize: '1.5rem' }}>Tài Khoản Quản Trị NHCOJ</h1>
           </div>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
             Quản lý các câu hỏi trong đề thi lập trình, thêm bớt bài toán, và tối ưu hóa bộ testcase kiểm thử.

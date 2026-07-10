@@ -60,7 +60,7 @@ export default function LoginSection({ onLoginSuccess, isDark }: LoginSectionPro
             <Code size={24} className="pulse-animation" />
           </div>
           <h2 className="login-title">
-            Đăng nhập <span className="gradient-text">CSOJ Portal</span>
+            Đăng nhập <span className="gradient-text">NHCOJ</span>
           </h2>
           <p className="login-subtitle">
             Hệ thống chấm bài lập trình trực tuyến thế hệ mới

@@ -309,7 +309,7 @@ export default function App() {
           </div>
           <div className="status-bar-right">
             <span className="hidden-xs">Line 1, Col 1</span>
-            <span style={{ fontWeight: 'bold', color: '#10b981' }}>CSOJ Engine v2.5</span>
+            <span style={{ fontWeight: 'bold', color: '#10b981' }}>NHCOJ Engine v2.5</span>
           </div>
         </footer>
       )}

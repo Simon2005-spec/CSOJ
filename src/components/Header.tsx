@@ -119,7 +119,7 @@ export default function Header({
             <Code size={16} className="pulse-animation" />
           </div>
           <span className="logo-text">
-            <span className="gradient-text font-black">CSOJ Portal</span>
+            <span className="gradient-text font-black">NHCOJ</span>
           </span>
         </div>
 

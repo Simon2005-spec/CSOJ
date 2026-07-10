@@ -119,7 +119,7 @@ export default function HomeSection({
             <Code size={18} className="pulse-animation" />
           </div>
           <span className="logo-text" style={{ fontSize: '1.125rem' }}>
-            <span className="gradient-text font-black">CSOJ Portal</span>
+            <span className="gradient-text font-black">NHCOJ</span>
           </span>
         </div>
 
@@ -144,7 +144,7 @@ export default function HomeSection({
               >
                 <div className="dropdown-header">
                   <p className="dropdown-header-title">{t.userAccount}</p>
-                  <p className="dropdown-header-email">{username}@csoj.org</p>
+                  <p className="dropdown-header-email">{username}@nhcoj.org</p>
                 </div>
                 <div style={{ padding: '0.25rem' }}>
                   <button
@@ -183,7 +183,7 @@ export default function HomeSection({
             transition={{ delay: 0.1 }}
             className="welcome-title"
           >
-            {t.welcome} <span className="gradient-text">CSOJ Portal</span>
+            {t.welcome} <span className="gradient-text">NHCOJ</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
