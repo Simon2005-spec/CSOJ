@@ -62,6 +62,16 @@
   --color-log-success: #059669;
   --color-log-error: #dc2626;
   --color-log-stdout: #334155;
+
+  /* Syntax Highlighting Colors - Light Mode */
+  --hl-comment: #7E7973;
+  --hl-string: #059669;
+  --hl-keyword: #7c3aed;
+  --hl-type: #0284c7;
+  --hl-number: #ea580c;
+  --hl-function: #d97706;
+  --hl-builtin: #2563eb;
+  --hl-preprocessor: #c026d3;
 }
 
 .dark {
@@ -98,6 +108,16 @@
   --color-log-success: #34d399;
   --color-log-error: #f87171;
   --color-log-stdout: #e2e8f0;
+
+  /* Syntax Highlighting Colors - Dark Mode */
+  --hl-comment: #807B75;
+  --hl-string: #34d399;
+  --hl-keyword: #c084fc;
+  --hl-type: #38bdf8;
+  --hl-number: #fb923c;
+  --hl-function: #fbbf24;
+  --hl-builtin: #60a5fa;
+  --hl-preprocessor: #f472b6;
 }
 
 html, body, #root {
@@ -1168,10 +1188,44 @@ html, body, #root {
   line-height: 1.25rem;
 }
 
-.editor-textarea {
+.editor-input-area {
+  position: relative;
   flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+.editor-highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  padding: 0.75rem 1rem;
+  margin: 0;
+  border: none;
   background: transparent;
+  white-space: pre;
+  word-wrap: normal;
+  overflow: hidden;
   color: var(--color-editor-text);
+  box-sizing: border-box;
+}
+
+.editor-textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text-primary);
+  -webkit-text-fill-color: transparent;
   font-family: var(--font-mono);
   font-size: 0.75rem;
   line-height: 1.25rem;
@@ -1184,6 +1238,43 @@ html, body, #root {
   white-space: pre;
   word-wrap: normal;
   tab-size: 4;
+  box-sizing: border-box;
+}
+
+/* Syntax Highlighting Classes */
+.hl-comment {
+  color: var(--hl-comment);
+  font-style: italic;
+}
+
+.hl-string {
+  color: var(--hl-string);
+}
+
+.hl-keyword {
+  color: var(--hl-keyword);
+  font-weight: 600;
+}
+
+.hl-type {
+  color: var(--hl-type);
+  font-weight: 600;
+}
+
+.hl-number {
+  color: var(--hl-number);
+}
+
+.hl-function {
+  color: var(--hl-function);
+}
+
+.hl-builtin {
+  color: var(--hl-builtin);
+}
+
+.hl-preprocessor {
+  color: var(--hl-preprocessor);
 }
 
 /* Console Panel bottom */

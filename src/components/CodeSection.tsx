@@ -4,6 +4,7 @@ import { translations } from '../locales/translations';
 import { evaluateCode } from '../lib/judge';
 import { Play, CheckSquare, Terminal, ChevronRight, CheckCircle2, Circle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { highlightCode } from '../utils/highlighter';
 
 interface CodeSectionProps {
   problems: CodingProblem[];
@@ -49,6 +50,7 @@ export default function CodeSection({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
+  const highlightRef = useRef<HTMLPreElement>(null);
 
   // Sync textarea code with local state when problem, language or reset state changes
   useEffect(() => {
@@ -63,12 +65,23 @@ export default function CodeSection({
     }
   }, [problem?.id, selectedLang, Object.keys(codingAnswers).length === 0]);
 
-  // Synchronize scrolling of code editor and line numbers gutter
+  // Synchronize scrolling of code editor, highlighted pre, and line numbers gutter
   const handleScroll = () => {
-    if (textareaRef.current && gutterRef.current) {
-      gutterRef.current.scrollTop = textareaRef.current.scrollTop;
+    if (textareaRef.current) {
+      if (gutterRef.current) {
+        gutterRef.current.scrollTop = textareaRef.current.scrollTop;
+      }
+      if (highlightRef.current) {
+        highlightRef.current.scrollTop = textareaRef.current.scrollTop;
+        highlightRef.current.scrollLeft = textareaRef.current.scrollLeft;
+      }
     }
   };
+
+  // Sync scroll on code/lang changes to prevent offsets
+  useEffect(() => {
+    handleScroll();
+  }, [code, selectedLang]);
 
   // Generate line numbers
   const lineNumbers = useMemo(() => {
@@ -157,7 +170,7 @@ export default function CodeSection({
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     try {
-      const displayLangName = selectedLang === 'cpp' ? 'C++ 2017' : selectedLang === 'python' ? 'Python 3' : 'Pascal';
+      const displayLangName = selectedLang === 'cpp' ? 'C++ 17' : selectedLang === 'python' ? 'Python 3' : 'Pascal';
       setConsoleLogs((prev) => [...prev, { type: 'info', message: t.compilingMsg.replace('{lang}', displayLangName) }]);
       await new Promise((resolve) => setTimeout(resolve, 600));
 
@@ -290,7 +303,7 @@ export default function CodeSection({
                 onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
                 className="lang-selector"
               >
-                <option value="cpp">C++ 2017</option>
+                <option value="cpp">C++ 17</option>
                 <option value="python">Python 3</option>
                 <option value="pascal">Pascal</option>
               </select>
@@ -329,18 +342,26 @@ export default function CodeSection({
               ))}
             </div>
 
-            <textarea
-              ref={textareaRef}
-              value={code}
-              onChange={(e) => handleCodeChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onScroll={handleScroll}
-              className="editor-textarea"
-              spellCheck={false}
-              autoCapitalize="none"
-              autoComplete="off"
-              autoCorrect="off"
-            />
+            <div className="editor-input-area">
+              <pre 
+                ref={highlightRef} 
+                className="editor-highlight" 
+                aria-hidden="true"
+                dangerouslySetInnerHTML={{ __html: highlightCode(code, selectedLang) }}
+              />
+              <textarea
+                ref={textareaRef}
+                value={code}
+                onChange={(e) => handleCodeChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onScroll={handleScroll}
+                className="editor-textarea"
+                spellCheck={false}
+                autoCapitalize="none"
+                autoComplete="off"
+                autoCorrect="off"
+              />
+            </div>
           </div>
 
           {/* Console Output Logs Panel */}
