@@ -166,7 +166,7 @@ export default function Header({
               >
                 <div className="dropdown-header">
                   <p className="dropdown-header-title">{t.userAccount}</p>
-                  <p className="dropdown-header-email">{userName}@csoj.org</p>
+                  <p className="dropdown-header-email">{userName}@nhcoj.org</p>
                 </div>
                 <div style={{ padding: '0.25rem' }}>
                   <button

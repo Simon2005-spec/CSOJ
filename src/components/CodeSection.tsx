@@ -52,17 +52,37 @@ export default function CodeSection({
   const gutterRef = useRef<HTMLDivElement>(null);
   const highlightRef = useRef<HTMLPreElement>(null);
 
+  const latestCodeRef = useRef<string>('');
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync latestCodeRef with local state code
+  useEffect(() => {
+    latestCodeRef.current = code;
+  }, [code]);
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   // Sync textarea code with local state when problem, language or reset state changes
   useEffect(() => {
     if (!problem) return;
     const saved = codingAnswers[problem.id];
+    let initialCode = '';
     if (saved && (saved as any).codes && (saved as any).codes[selectedLang] !== undefined) {
-      setCode((saved as any).codes[selectedLang]);
+      initialCode = (saved as any).codes[selectedLang];
     } else if (saved && saved.language === selectedLang) {
-      setCode(saved.code);
+      initialCode = saved.code;
     } else {
-      setCode(problem.defaultCode[selectedLang as keyof typeof problem.defaultCode] || '');
+      initialCode = problem.defaultCode[selectedLang as keyof typeof problem.defaultCode] || '';
     }
+    setCode(initialCode);
+    latestCodeRef.current = initialCode;
   }, [problem?.id, selectedLang, Object.keys(codingAnswers).length === 0]);
 
   // Synchronize scrolling of code editor, highlighted pre, and line numbers gutter
@@ -89,24 +109,23 @@ export default function CodeSection({
     return Array.from({ length: Math.max(lines.length, 1) }, (_, i) => i + 1);
   }, [code]);
 
-  const handleCodeChange = (newCode: string) => {
+  const syncCodeToParent = (codeToSync: string, langToSync: SupportedLanguage) => {
     if (!problem) return;
-    setCode(newCode);
     setCodingAnswers((prev) => {
       const prevProblem = prev[problem.id] || {
         code: '',
-        language: selectedLang,
+        language: langToSync,
         passed: false
       };
       const updatedCodes = {
         ...((prevProblem as any).codes || {}),
-        [selectedLang]: newCode
+        [langToSync]: codeToSync
       };
       return {
         ...prev,
         [problem.id]: {
-          code: newCode,
-          language: selectedLang,
+          code: codeToSync,
+          language: langToSync,
           passed: prevProblem.passed || false,
           codes: updatedCodes
         } as any
@@ -114,15 +133,42 @@ export default function CodeSection({
     });
   };
 
+  const handleCodeChange = (newCode: string) => {
+    if (!problem) return;
+    setCode(newCode);
+    latestCodeRef.current = newCode;
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      syncCodeToParent(newCode, selectedLang);
+    }, 500);
+  };
+
+  const handleBlur = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    syncCodeToParent(latestCodeRef.current, selectedLang);
+  };
+
   const handleLanguageChange = (lang: SupportedLanguage) => {
     if (!problem) return;
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
     setSelectedLang(lang);
+    const prevProblem = codingAnswers[problem.id];
+    const savedCode = prevProblem && (prevProblem as any).codes && (prevProblem as any).codes[lang] !== undefined
+      ? (prevProblem as any).codes[lang]
+      : (problem.defaultCode[lang as keyof typeof problem.defaultCode] || '');
+    
+    setCode(savedCode);
+    latestCodeRef.current = savedCode;
+
     setCodingAnswers((prev) => {
       const prevProblem = prev[problem.id];
-      const savedCode = prevProblem && (prevProblem as any).codes && (prevProblem as any).codes[lang] !== undefined
-        ? (prevProblem as any).codes[lang]
-        : (problem.defaultCode[lang as keyof typeof problem.defaultCode] || '');
-      
       const updatedCodes = {
         ...((prevProblem as any)?.codes || {}),
         [lang]: savedCode
@@ -164,6 +210,11 @@ export default function CodeSection({
 
   const runCode = async () => {
     if (!problem) return;
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    syncCodeToParent(latestCodeRef.current, selectedLang);
+
     setIsRunning(true);
     setConsoleLogs([{ type: 'info', message: t.initRunner }]);
 
@@ -174,7 +225,7 @@ export default function CodeSection({
       setConsoleLogs((prev) => [...prev, { type: 'info', message: t.compilingMsg.replace('{lang}', displayLangName) }]);
       await new Promise((resolve) => setTimeout(resolve, 600));
 
-      const results = evaluateCode(code, selectedLang, problem, language);
+      const results = evaluateCode(latestCodeRef.current, selectedLang, problem, language);
       const allPassed = results.every(r => r.passed);
 
       setConsoleLogs((prev) => [
@@ -189,10 +240,22 @@ export default function CodeSection({
         }
       ]);
 
-      setCodingAnswers((prev) => ({
-        ...prev,
-        [problem.id]: { ...prev[problem.id], passed: allPassed, code, language: selectedLang }
-      }));
+      setCodingAnswers((prev) => {
+        const prevProblem = prev[problem.id] || {};
+        const updatedCodes = {
+          ...((prevProblem as any).codes || {}),
+          [selectedLang]: latestCodeRef.current
+        };
+        return {
+          ...prev,
+          [problem.id]: {
+            code: latestCodeRef.current,
+            language: selectedLang,
+            passed: allPassed,
+            codes: updatedCodes
+          } as any
+        };
+      });
     } catch (err: any) {
       setConsoleLogs((prev) => [...prev, { type: 'error', message: err.message }]);
     }
@@ -355,6 +418,7 @@ export default function CodeSection({
                 onChange={(e) => handleCodeChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onScroll={handleScroll}
+                onBlur={handleBlur}
                 className="editor-textarea"
                 spellCheck={false}
                 autoCapitalize="none"

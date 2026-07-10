@@ -118,6 +118,22 @@ export default function App() {
     }
   };
 
+  // Handle editing/updating a problem
+  const handleEditProblem = (oldId: string, updatedProb: CodingProblem) => {
+    setProblems((prev) => {
+      const index = prev.findIndex((p) => p.id === oldId);
+      if (index !== -1) {
+        const next = [...prev];
+        next[index] = updatedProb;
+        return next;
+      }
+      return [...prev.filter((p) => p.id !== updatedProb.id), updatedProb];
+    });
+    if (currentProblemId === oldId) {
+      setCurrentProblemId(updatedProb.id);
+    }
+  };
+
   // Handle removing a problem
   const handleRemoveProblem = (problemId: string) => {
     setProblems((prev) => {
@@ -211,6 +227,7 @@ export default function App() {
           <AdminSection
             problems={problems}
             onAddProblem={handleAddProblem}
+            onEditProblem={handleEditProblem}
             onRemoveProblem={handleRemoveProblem}
             onLogout={handleLogout}
           />

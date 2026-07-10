@@ -11,13 +11,15 @@ import {
   HelpCircle,
   Eye,
   X,
-  Briefcase
+  Briefcase,
+  Pencil
 } from 'lucide-react';
 import { CodingProblem } from '../types';
 
 interface AdminSectionProps {
   problems: CodingProblem[];
   onAddProblem: (newProblem: CodingProblem) => void;
+  onEditProblem: (oldId: string, updatedProblem: CodingProblem) => void;
   onRemoveProblem: (problemId: string) => void;
   onLogout: () => void;
 }
@@ -25,11 +27,13 @@ interface AdminSectionProps {
 export default function AdminSection({ 
   problems, 
   onAddProblem, 
+  onEditProblem, 
   onRemoveProblem, 
   onLogout 
 }: AdminSectionProps) {
   // Navigation / Tabs within Admin
   const [adminTab, setAdminTab] = useState<'list' | 'add'>('list');
+  const [editingProblemId, setEditingProblemId] = useState<string | null>(null);
 
   // Form Fields State
   const [id, setId] = useState('');
@@ -39,6 +43,61 @@ export default function AdminSection({
   const [entryFunctionName, setEntryFunctionName] = useState('');
   const [inputNamesStr, setInputNamesStr] = useState('');
   
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  const parseTestcaseInputList = (inputsStr: string): any[] => {
+    try {
+      const wrapped = JSON.parse('[' + inputsStr + ']');
+      if (Array.isArray(wrapped)) {
+        return wrapped;
+      }
+    } catch (e) {
+      try {
+        const parsedObj = JSON.parse(inputsStr);
+        return [parsedObj];
+      } catch {
+        const parts = inputsStr.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        return parts.map(part => {
+          try {
+            return JSON.parse(part);
+          } catch {
+            return part;
+          }
+        });
+      }
+    }
+    return [];
+  };
+
+  const insertHTML = (before: string, after: string) => {
+    const el = textareaRef.current;
+    if (!el) {
+      setDescription(prev => prev + before + after);
+      return;
+    }
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const text = el.value;
+    const selected = text.substring(start, end);
+    const replacement = before + selected + after;
+    setDescription(text.substring(0, start) + replacement + text.substring(end));
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + before.length, start + before.length + selected.length);
+    }, 50);
+  };
+
+  const insertStandardTemplate = () => {
+    const template = `<p>Cho một số nguyên dương <b>n</b>. Hãy viết chương trình kiểm tra xem số đó có phải là số nguyên tố hay không.</p>
+
+<h3>Đầu vào (Input)</h3>
+<p>Một dòng duy nhất chứa số nguyên dương <b>n</b> (1 ≤ n ≤ 10^9).</p>
+
+<h3>Đầu ra (Output)</h3>
+<p>Trả về <b>true</b> nếu là số nguyên tố, ngược lại trả về <b>false</b>.</p>`;
+    setDescription(template);
+  };
+
   // Dynamic fields lists
   const [constraints, setConstraints] = useState<string[]>([
     'Thời gian chạy tối đa: 1.0 giây',
@@ -68,9 +127,9 @@ export default function AdminSection({
   // Success / Error Alerts
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Auto-generate ID based on Title
+  // Auto-generate ID and entryFunctionName based on Title
   useEffect(() => {
-    if (adminTab === 'add') {
+    if (adminTab === 'add' && !editingProblemId) {
       const slug = title
         .toLowerCase()
         .normalize('NFD')
@@ -81,113 +140,78 @@ export default function AdminSection({
         .replace(/^-+/, '')
         .replace(/-+$/, '');
       setId(slug);
-    }
-  }, [title, adminTab]);
 
-  // Handle Input Names parsing
+      // Convert accented Vietnamese characters to raw English & form camelCase
+      const clean = title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/[^a-zA-Z0-9\s-_]/g, '')
+        .trim();
+      const parts = clean.split(/[\s-_]+/);
+      let derivedFn = 'solve';
+      if (parts.length > 0 && parts[0]) {
+        derivedFn = parts[0] + parts.slice(1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('');
+        derivedFn = derivedFn.replace(/[^a-zA-Z0-9]/g, '');
+      }
+      setEntryFunctionName(derivedFn || 'solve');
+    }
+  }, [title, adminTab, editingProblemId]);
+
   const parsedInputNames = inputNamesStr
     .split(',')
     .map(name => name.trim())
     .filter(name => name.length > 0);
 
-  // Generate standard code templates automatically on field changes
+  // Auto-derive inputNamesStr based on the testcases
   useEffect(() => {
-    if (isUsingAutoTemplates && entryFunctionName && parsedInputNames.length > 0) {
-      const argsList = parsedInputNames.join(', ');
-      
-      const pyFn = entryFunctionName.replace(/([A-Z])/g, '_$1').toLowerCase();
-      setCustomPython(`def ${pyFn}(${argsList}):
-    """
-    Hãy viết hàm xử lý thuật toán tại đây.
-    """
-    # Viết code của bạn ở đây
-    return None
-`);
-
-      setCustomPascal(`function ${entryFunctionName}(${parsedInputNames.map(name => `${name}: integer`).join('; ')}): integer;
-var
-    // Khai báo biến tại đây nếu cần thiết
-begin
-    // Viết code của bạn ở đây
-    exit(0);
-end;
-`);
-
-      setCustomCpp(`#include <iostream>
-#include <vector>
-#include <string>
-
-using namespace std;
-
-// Thay đổi kiểu dữ liệu trả về và tham số nếu cần thiết
-int ${entryFunctionName}(${parsedInputNames.map(name => `int ${name}`).join(', ')}) {
-    // Viết code của bạn ở đây
-    return 0;
-}
-
-int main() {
-    int ${parsedInputNames.join(', ')};
-    // Đọc dữ liệu từ cin và gọi hàm xử lý của bạn
-    return 0;
-}
-`);
+    if (editingProblemId) return;
+    if (testCases.length > 0) {
+      const firstTc = testCases[0];
+      const parsedInputs = parseTestcaseInputList(firstTc.inputStr);
+      const N = parsedInputs.length || 1;
+      const names = Array.from({ length: N }, (_, i) => {
+        if (N === 1) {
+          return typeof parsedInputs[0] === 'string' ? 's' : 'n';
+        }
+        if (N === 2) {
+          const firstIsArr = Array.isArray(parsedInputs[0]);
+          return i === 0 ? (firstIsArr ? 'nums' : 'a') : (firstIsArr ? 'target' : 'b');
+        }
+        return String.fromCharCode(97 + i);
+      });
+      setInputNamesStr(names.join(', '));
+    } else {
+      setInputNamesStr('n');
     }
-  }, [entryFunctionName, inputNamesStr, isUsingAutoTemplates, adminTab]);
+  }, [testCases, editingProblemId]);
 
   // Helper validation for testcases JSON
-  const validateTestcase = (inputsStr: string, expStr: string): { valid: boolean; error?: string; parsedInput?: any[]; parsedExpected?: any } => {
+  const validateTestcase = (inputsStr: string, expStr: string, expectedCount?: number): { valid: boolean; error?: string; parsedInput?: any[]; parsedExpected?: any } => {
     let parsedInput: any[] = [];
     let parsedExpected: any;
 
-    // 1. Parse expected output
     try {
       parsedExpected = JSON.parse(expStr);
     } catch (e) {
-      // Fall back to treating it as a raw string (trimmed)
       parsedExpected = expStr.trim();
     }
 
-    // 2. Parse inputs
-    try {
-      // Try parsing as JSON array
-      const tempInput = JSON.parse('[' + inputsStr + ']');
-      if (Array.isArray(tempInput) && tempInput.length === parsedInputNames.length) {
-        parsedInput = tempInput;
-      } else if (parsedInputNames.length === 1) {
-        // If it failed length check but we only expect 1 argument, try parsing inputsStr directly
-        parsedInput = [JSON.parse(inputsStr)];
-      } else {
-        throw new Error('Mismatch length');
-      }
-    } catch (e) {
-      // If parsing fails or length mismatch, and we only have 1 input argument:
-      if (parsedInputNames.length === 1) {
-        // Fall back to treating the whole inputsStr as a raw string
-        parsedInput = [inputsStr];
-      } else {
-        // If we have multiple inputs, split by comma and parse each as JSON if possible, else as string
-        const parts = inputsStr.split(',').map(s => s.trim());
-        if (parts.length === parsedInputNames.length) {
-          parsedInput = parts.map(part => {
-            try {
-              return JSON.parse(part);
-            } catch {
-              return part; // fallback to raw string
-            }
-          });
-        } else {
-          return {
-            valid: false,
-            error: `Số lượng tham số đầu vào (${parts.length}) không khớp với số tham số khai báo (${parsedInputNames.length}): [${parsedInputNames.join(', ')}]`
-          };
-        }
-      }
+    parsedInput = parseTestcaseInputList(inputsStr);
+
+    if (expectedCount !== undefined && parsedInput.length !== expectedCount) {
+      return {
+        valid: false,
+        error: `Số lượng tham số đầu vào (${parsedInput.length}) không khớp với bộ testcase đầu tiên (${expectedCount})`
+      };
     }
 
     return { valid: true, parsedInput, parsedExpected };
   };
 
   const handleOpenAddTab = () => {
+    setEditingProblemId(null);
     setTitle('');
     setDescription('');
     setEntryFunctionName('');
@@ -199,6 +223,25 @@ int main() {
     setCustomPython('');
     setCustomCpp('');
     setIsUsingAutoTemplates(true);
+    setAdminTab('add');
+  };
+
+  const handleEditProblemClick = (prob: CodingProblem) => {
+    setEditingProblemId(prob.id);
+    setId(prob.id);
+    setTitle(prob.title);
+    setDifficulty(prob.difficulty);
+    setDescription(prob.descriptionHtml);
+    setEntryFunctionName(prob.entryFunctionName);
+    setInputNamesStr(prob.inputNames.join(', '));
+    setConstraints(prob.constraints);
+    setExamples(prob.examples);
+    // Convert testcases back to raw string representations for editing
+    setTestCases(prob.testCases.map((tc) => {
+      const inputStr = tc.input.map(arg => JSON.stringify(arg)).join(', ');
+      const expectedStr = JSON.stringify(tc.expected);
+      return { inputStr, expectedStr };
+    }));
     setAdminTab('add');
   };
 
@@ -238,7 +281,14 @@ int main() {
       return;
     }
 
-    const check = validateTestcase(tcInputStr, tcExpectedStr);
+    let expectedCount: number | undefined = undefined;
+    if (testCases.length > 0) {
+      const firstTc = testCases[0];
+      const parsedFirst = parseTestcaseInputList(firstTc.inputStr);
+      expectedCount = parsedFirst.length;
+    }
+
+    const check = validateTestcase(tcInputStr, tcExpectedStr, expectedCount);
     if (!check.valid) {
       showNotification('error', `Lỗi Testcase: ${check.error}`);
       return;
@@ -262,8 +312,8 @@ int main() {
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!id.trim() || !title.trim() || !entryFunctionName.trim() || parsedInputNames.length === 0) {
-      showNotification('error', 'Vui lòng điền đầy đủ các thông tin bắt buộc: ID, Tiêu đề, Tên hàm, và Tham số đầu vào.');
+    if (!id.trim() || !title.trim()) {
+      showNotification('error', 'Vui lòng điền đầy đủ các thông tin bắt buộc: ID và Tiêu đề bài toán.');
       return;
     }
 
@@ -277,18 +327,35 @@ int main() {
       return;
     }
 
+    // Determine input names based on first testcase
+    const firstTc = testCases[0];
+    const parsedFirstInputs = parseTestcaseInputList(firstTc.inputStr);
+    const N = parsedFirstInputs.length || 1;
+    const finalInputNames = Array.from({ length: N }, (_, i) => {
+      if (N === 1) {
+        return typeof parsedFirstInputs[0] === 'string' ? 's' : 'n';
+      }
+      if (N === 2) {
+        const firstIsArr = Array.isArray(parsedFirstInputs[0]);
+        return i === 0 ? (firstIsArr ? 'nums' : 'a') : (firstIsArr ? 'target' : 'b');
+      }
+      return String.fromCharCode(97 + i);
+    });
+
+    const derivedFnName = entryFunctionName || 'solve';
+
     // Validate and build final testcases array
     const validatedTestCases: { input: any[]; expected: any; rawInput: string }[] = [];
     for (let i = 0; i < testCases.length; i++) {
       const tc = testCases[i];
-      const check = validateTestcase(tc.inputStr, tc.expectedStr);
+      const check = validateTestcase(tc.inputStr, tc.expectedStr, N);
       if (!check.valid) {
         showNotification('error', `Testcase #${i + 1} không hợp lệ: ${check.error}`);
         return;
       }
 
       // Build rawInput string representation, e.g. "nums = [2, 7, 11, 15], target = 9"
-      const rawInputParts = parsedInputNames.map((name, idx) => {
+      const rawInputParts = finalInputNames.map((name, idx) => {
         const val = check.parsedInput ? check.parsedInput[idx] : undefined;
         return `${name} = ${JSON.stringify(val)}`;
       });
@@ -301,37 +368,86 @@ int main() {
       });
     }
 
-    // Convert flat description text with newlines to paragraph HTML elements
-    const descParagraphs = description
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .map(line => `<p>${line}</p>`)
-      .join('\n');
+    // Accept raw HTML directly if present, otherwise format text with paragraphs
+    let finalDescHtml = description.trim();
+    if (!finalDescHtml.includes('<p>') && !finalDescHtml.includes('<div>') && !finalDescHtml.includes('<ul>') && !finalDescHtml.includes('<h3>')) {
+      finalDescHtml = finalDescHtml
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(line => `<p>${line}</p>`)
+        .join('\n');
+    }
+
+    // Automatically generate templates programmatically on submission
+    const argsList = finalInputNames.join(', ');
+    const pyFn = derivedFnName.replace(/([A-Z])/g, '_$1').toLowerCase();
+    
+    const pyTemplate = `def ${pyFn}(${argsList}):
+    """
+    Hãy viết hàm xử lý thuật toán tại đây.
+    """
+    # Viết code của bạn ở đây
+    return None
+`;
+
+    const pasTemplate = `function ${derivedFnName}(${finalInputNames.map(name => `${name}: integer`).join('; ')}): integer;
+var
+    // Khai báo biến tại đây nếu cần thiết
+begin
+    // Viết code của bạn ở đây
+    exit(0);
+end;
+`;
+
+    const cppTemplate = `#include <iostream>
+#include <vector>
+#include <string>
+
+using namespace std;
+
+// Thay đổi kiểu dữ liệu trả về và tham số nếu cần thiết
+int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
+    // Viết code của bạn ở đây
+    return 0;
+}
+
+int main() {
+    int ${finalInputNames.join(', ')};
+    // Đọc dữ liệu từ cin và gọi hàm xử lý của bạn
+    return 0;
+}
+`;
 
     const newProblem: CodingProblem = {
       id: id.trim(),
       title: title.trim(),
       difficulty,
-      descriptionHtml: descParagraphs || `<p>${title.trim()}</p>`,
-      inputFormat: `<ul><li>Tham số đầu vào: <code>${parsedInputNames.join(', ')}</code></li></ul>`,
-      outputFormat: `Giá trị trả về của hàm <code>${entryFunctionName.trim()}</code>.`,
+      descriptionHtml: finalDescHtml || `<p>${title.trim()}</p>`,
+      inputFormat: `<ul><li>Tham số đầu vào: <code>${finalInputNames.join(', ')}</code></li></ul>`,
+      outputFormat: `Giá trị trả về của hàm <code>${derivedFnName}</code>.`,
       examples,
       constraints,
-      entryFunctionName: entryFunctionName.trim(),
-      inputNames: parsedInputNames,
+      entryFunctionName: derivedFnName,
+      inputNames: finalInputNames,
       defaultCode: {
-        python: customPython || `def ${entryFunctionName}(${parsedInputNames.join(', ')}):\n    pass`,
-        cpp: customCpp,
-        pascal: customPascal || `function ${entryFunctionName}(${parsedInputNames.map(name => `${name}: integer`).join('; ')}): integer;\nbegin\nend;`
+        python: pyTemplate,
+        cpp: cppTemplate,
+        pascal: pasTemplate
       },
       testCases: validatedTestCases
     };
 
-    onAddProblem(newProblem);
-    showNotification('success', `Đã nạp thành công câu hỏi mới: "${newProblem.title}"!`);
+    if (editingProblemId) {
+      onEditProblem(editingProblemId, newProblem);
+      showNotification('success', `Đã cập nhật thành công câu hỏi: "${newProblem.title}"!`);
+    } else {
+      onAddProblem(newProblem);
+      showNotification('success', `Đã nạp thành công câu hỏi mới: "${newProblem.title}"!`);
+    }
     
     // Reset Form
+    setEditingProblemId(null);
     setTitle('');
     setDescription('');
     setEntryFunctionName('');
@@ -405,8 +521,8 @@ int main() {
           className={`csoj-btn ${adminTab === 'add' ? 'csoj-btn-primary' : ''}`}
           style={{ padding: '0.375rem 1rem', fontSize: '0.875rem', background: adminTab === 'add' ? 'var(--btn-primary-bg)' : 'transparent', color: adminTab === 'add' ? 'var(--btn-primary-text)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
         >
-          <Plus size={14} />
-          <span>Thêm câu hỏi mới</span>
+          {editingProblemId ? <Pencil size={14} /> : <Plus size={14} />}
+          <span>{editingProblemId ? 'Chỉnh sửa câu hỏi' : 'Thêm câu hỏi mới'}</span>
         </button>
       </div>
 
@@ -447,15 +563,26 @@ int main() {
                       <td style={{ padding: '1rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{prob.inputNames.join(', ')}</td>
                       <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>{prob.testCases.length} tc</td>
                       <td style={{ padding: '1rem', textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={() => setProblemToDelete(prob)}
-                          className="csoj-btn csoj-btn-outline"
-                          style={{ padding: '0.375rem', color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)', hover: { background: 'rgba(239,68,68,0.1)' } }}
-                          title="Xóa câu hỏi"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleEditProblemClick(prob)}
+                            className="csoj-btn csoj-btn-outline"
+                            style={{ padding: '0.375rem', color: '#3b82f6', borderColor: 'rgba(59,130,246,0.2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Chỉnh sửa câu hỏi"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setProblemToDelete(prob)}
+                            className="csoj-btn csoj-btn-outline"
+                            style={{ padding: '0.375rem', color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Xóa câu hỏi"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -474,7 +601,7 @@ int main() {
           <div className="liquid-glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <h2 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-element)', paddingBottom: '0.5rem' }}>
               <FileText size={18} style={{ color: '#10b981' }} />
-              <span>1. Thông tin chung của Bài toán</span>
+              <span>1. Thông tin chung & Nội dung đề thi</span>
             </h2>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
@@ -524,76 +651,9 @@ int main() {
               </div>
             </div>
 
-            {/* Description Textarea */}
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Mô tả chi tiết bài toán (Tự động chuyển dòng thành thẻ đoạn &lt;p&gt;)</span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Mỗi lần xuống dòng tạo ra 1 đoạn mới</span>
-              </label>
-              <textarea
-                required
-                rows={5}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Nhập yêu cầu đề bài. Ví dụ:&#10;Cho một số nguyên dương n. Hãy kiểm tra xem n có phải là số nguyên tố hay không.&#10;In ra true nếu n là số nguyên tố, ngược lại in ra false."
-                className="csoj-input"
-                style={{ resize: 'vertical' }}
-              />
-            </div>
-          </div>
-
-          {/* Section 2: Function Signature & Entry Points */}
-          <div className="liquid-glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-element)', paddingBottom: '0.5rem' }}>
-              <Code size={18} style={{ color: '#10b981' }} />
-              <span>2. Khai báo hàm & Biến đầu vào</span>
-            </h2>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-0.75rem', lineHeight: 1.4 }}>
-              Cấu hình chính xác tên hàm và các tham số. Trình biên dịch sẽ tự động sinh mã nguồn mẫu tương ứng cho các ngôn ngữ khác nhau dựa trên thông tin này.
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-              {/* Entry Function Name */}
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                  <span>Tên hàm chấm thi (Entry Point)</span>
-                  <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={entryFunctionName}
-                  onChange={(e) => setEntryFunctionName(e.target.value)}
-                  placeholder="Ví dụ: isPrime, twoSum, solve"
-                  className="csoj-input"
-                  style={{ fontFamily: 'var(--font-mono)' }}
-                />
-              </div>
-
-              {/* Input Names */}
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                  <span>Danh sách tham số đầu vào (Cực kỳ quan trọng)</span>
-                  <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={inputNamesStr}
-                  onChange={(e) => setInputNamesStr(e.target.value)}
-                  placeholder="Các tham số phân cách bằng dấu phẩy. Ví dụ: nums, target"
-                  className="csoj-input"
-                  style={{ fontFamily: 'var(--font-mono)' }}
-                />
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
-                  Hàm của bạn sẽ nhận dạng tham số: {parsedInputNames.length > 0 ? parsedInputNames.map(n => `"${n}"`).join(', ') : 'Chưa có'}
-                </span>
-              </div>
-            </div>
-
             {/* Constraints Dynamic List */}
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label">Ràng buộc & Giới hạn thuật toán</label>
+            <div className="form-group" style={{ margin: '0.5rem 0 0 0' }}>
+              <label className="form-label" style={{ fontWeight: 600 }}>Ràng buộc & Giới hạn thuật toán</label>
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <input
                   type="text"
@@ -626,13 +686,98 @@ int main() {
                 ))}
               </ul>
             </div>
+
+            {/* Description Textarea with HTML insertion tools */}
+            <div className="form-group" style={{ margin: '0.5rem 0 0 0' }}>
+              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontWeight: 600 }}>Mô tả chi tiết đề bài (Sử dụng mã HTML chuyên nghiệp)</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Có thể viết các thẻ b, code, pre, h3, ul, li</span>
+              </label>
+
+              {/* Quick HTML Insertion Tools Bar */}
+              <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', marginBottom: '0.75rem', padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem', border: '1px solid var(--border-element)' }}>
+                <button
+                  type="button"
+                  onClick={() => insertHTML('<b>', '</b>')}
+                  className="csoj-btn csoj-btn-outline"
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', background: 'transparent' }}
+                >
+                  In đậm (b)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertHTML('<code>', '</code>')}
+                  className="csoj-btn csoj-btn-outline"
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', background: 'transparent' }}
+                >
+                  Mã code (code)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertHTML('<pre>', '</pre>')}
+                  className="csoj-btn csoj-btn-outline"
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', background: 'transparent' }}
+                >
+                  Khối mã (pre)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertHTML('<ul>\n  <li>', '</li>\n</ul>')}
+                  className="csoj-btn csoj-btn-outline"
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', background: 'transparent' }}
+                >
+                  Danh sách (ul)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertHTML('<h3>', '</h3>')}
+                  className="csoj-btn csoj-btn-outline"
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', background: 'transparent' }}
+                >
+                  Tiêu đề phụ (h3)
+                </button>
+                <button
+                  type="button"
+                  onClick={insertStandardTemplate}
+                  className="csoj-btn csoj-btn-outline"
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', borderColor: '#10b981', color: '#10b981', fontWeight: 600, background: 'rgba(16, 185, 129, 0.05)' }}
+                >
+                  Mẫu đề thi chuẩn 📝
+                </button>
+              </div>
+
+              <textarea
+                ref={textareaRef}
+                required
+                rows={10}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Nhập đề bài ở định dạng HTML hoặc sử dụng nút 'Mẫu đề thi chuẩn' ở trên để tự động điền mẫu."
+                className="csoj-input"
+                style={{ resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.875rem', lineHeight: '1.5' }}
+              />
+
+              {/* HTML Live Preview Box */}
+              {description.trim() && (
+                <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', border: '1px dashed var(--border-element)', borderRadius: '0.5rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#10b981', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
+                    Xem trước Đề bài (Live Preview)
+                  </div>
+                  <div 
+                    className="markdown-body coding-desc-preview" 
+                    dangerouslySetInnerHTML={{ __html: description }} 
+                    style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.6 }} 
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Section 3: Examples Builder */}
+          {/* Section 2: Examples Builder */}
           <div className="liquid-glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <h2 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-element)', paddingBottom: '0.5rem' }}>
               <Eye size={18} style={{ color: '#10b981' }} />
-              <span>3. Ví dụ mẫu cho Học sinh</span>
+              <span>2. Ví dụ mẫu cho Học sinh</span>
             </h2>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-0.75rem' }}>
               Thêm ít nhất 1-2 ví dụ thực tế có giải thích chi tiết để hiển thị trong mô tả đề bài.
@@ -713,11 +858,11 @@ int main() {
             )}
           </div>
 
-          {/* Section 4: Automated Testing Testcases (The Engine) */}
+          {/* Section 3: Automated Testing Testcases (The Engine) */}
           <div className="liquid-glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <h2 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-element)', paddingBottom: '0.5rem' }}>
               <CheckCircle size={18} style={{ color: '#10b981' }} />
-              <span>4. Testcase kiểm thử chấm điểm tự động</span>
+              <span>3. Bộ testcase kiểm thử chấm điểm tự động</span>
             </h2>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-0.75rem', lineHeight: 1.4 }}>
               Nhập các bộ dữ liệu kiểm thử thực tế. Các giá trị bắt buộc phải là định dạng JSON hợp lệ (ví dụ: mảng phải dùng dấu ngoặc vuông <code>[...]</code>, chuỗi ký tự phải bọc trong dấu nháy kép <code>"..."</code>, giá trị boolean viết thường <code>true</code> / <code>false</code>).
@@ -739,9 +884,11 @@ int main() {
                   className="csoj-input"
                   style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
                 />
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
-                  Truyền lần lượt vào: {parsedInputNames.map(n => `"${n}"`).join(', ')}
-                </span>
+                {testCases.length > 0 && (
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
+                    Tự động ánh xạ vào {testCases.length > 0 ? parsedInputNames.length : 1} biến đầu vào.
+                  </span>
+                )}
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
@@ -804,84 +951,12 @@ int main() {
             )}
           </div>
 
-          {/* Section 5: Customized Code Boilerplates (Customize Default Editor Code) */}
-          <div className="liquid-glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-element)', paddingBottom: '0.5rem' }}>
-              <h2 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-primary)' }}>
-                <Briefcase size={18} style={{ color: '#10b981' }} />
-                <span>5. Tùy biến khung mã nguồn mẫu (Boilerplates)</span>
-              </h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                <input
-                  type="checkbox"
-                  id="auto-template-checkbox"
-                  checked={isUsingAutoTemplates}
-                  onChange={(e) => setIsUsingAutoTemplates(e.target.checked)}
-                  style={{ cursor: 'pointer' }}
-                />
-                <label htmlFor="auto-template-checkbox" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 500 }}>
-                  Tự động điền theo Tên hàm
-                </label>
-              </div>
-            </div>
-
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-0.75rem', lineHeight: 1.4 }}>
-              Bạn có thể điều chỉnh mã nguồn xuất phát mặc định để học sinh không cần gõ từ đầu hoặc định hướng cấu trúc phù hợp cho từng ngôn ngữ lập trình.
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-              {/* Python Boilerplate */}
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem', color: '#3b82f6' }}>Python Template</label>
-                <textarea
-                  rows={6}
-                  value={customPython}
-                  onChange={(e) => {
-                    setCustomPython(e.target.value);
-                    setIsUsingAutoTemplates(false);
-                  }}
-                  className="csoj-input"
-                  style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', whiteSpace: 'pre', background: '#0f172a' }}
-                />
-              </div>
-
-              {/* C++ Boilerplate */}
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem', color: '#ec4899' }}>C++ Template</label>
-                <textarea
-                  rows={6}
-                  value={customCpp}
-                  onChange={(e) => {
-                    setCustomCpp(e.target.value);
-                    setIsUsingAutoTemplates(false);
-                  }}
-                  className="csoj-input"
-                  style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', whiteSpace: 'pre', background: '#0f172a' }}
-                />
-              </div>
-
-              {/* Pascal Boilerplate */}
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem', color: '#f59e0b' }}>Pascal Template</label>
-                <textarea
-                  rows={6}
-                  value={customPascal}
-                  onChange={(e) => {
-                    setCustomPascal(e.target.value);
-                    setIsUsingAutoTemplates(false);
-                  }}
-                  className="csoj-input"
-                  style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', whiteSpace: 'pre', background: '#0f172a' }}
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Form Actions Buttons */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
             <button
               type="button"
               onClick={() => {
+                setEditingProblemId(null);
                 setAdminTab('list');
                 setTitle('');
               }}

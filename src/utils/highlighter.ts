@@ -1,4 +1,12 @@
+const highlightCache = new Map<string, string>();
+const CACHE_LIMIT = 500;
+
 export function highlightCode(code: string, language: 'cpp' | 'python' | 'pascal'): string {
+  const cacheKey = `${language}:${code}`;
+  if (highlightCache.has(cacheKey)) {
+    return highlightCache.get(cacheKey)!;
+  }
+
   // We want to escape HTML characters first to prevent XSS and rendering breakages
   let html = code
     .replace(/&/g, '&amp;')
@@ -179,6 +187,14 @@ export function highlightCode(code: string, language: 'cpp' | 'python' | 'pascal
   if (html.endsWith('\n')) {
     html += ' ';
   }
+
+  if (highlightCache.size >= CACHE_LIMIT) {
+    const firstKey = highlightCache.keys().next().value;
+    if (firstKey !== undefined) {
+      highlightCache.delete(firstKey);
+    }
+  }
+  highlightCache.set(cacheKey, html);
 
   return html;
 }
