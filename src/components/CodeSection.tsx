@@ -301,7 +301,7 @@ export default function CodeSection({
                 onClick={runCode}
                 disabled={isRunning || isSubmitting}
                 className="csoj-btn csoj-btn-outline"
-                style={{ padding: '0.25rem 0.75rem', borderColor: '#475569', color: '#94a3b8' }}
+                style={{ padding: '0.25rem 0.75rem' }}
               >
                 <Play size={11} style={{ fill: '#10b981', stroke: 'none' }} />
                 <span>{t.btnRun}</span>
