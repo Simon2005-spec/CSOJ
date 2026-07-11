@@ -115,6 +115,33 @@ export default function AdminSection({
   const [tcInputStr, setTcInputStr] = useState('');
   const [tcExpectedStr, setTcExpectedStr] = useState('');
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+      
+      const fileName = file.name.toLowerCase();
+      // Only keep the actual content and try to format to valid JSON string if it's not already
+      // but if they upload raw text, we might just use it directly. The prompt just asks to auto-fill.
+      if (fileName.endsWith('.inp')) {
+        setTcInputStr(text.trim());
+      } else if (fileName.endsWith('.out')) {
+        setTcExpectedStr(text.trim());
+      } else {
+        // default fallback if extension is weird but user selected it
+        setTcInputStr(text.trim());
+      }
+      
+      // Reset input so the same file can be uploaded again if needed
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  };
+
   // Custom confirm state for deleting
   const [problemToDelete, setProblemToDelete] = useState<CodingProblem | null>(null);
 
@@ -592,10 +619,24 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
           <div className="liquid-glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <h2 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-element)', paddingBottom: '0.5rem' }}>
               <FileText size={18} style={{ color: '#10b981' }} />
-              <span>1. Thông tin chung & Nội dung đề thi</span>
+              <span>1. Thông tin cơ bản</span>
             </h2>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+              {/* ID */}
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Mã định danh duy nhất (ID)</label>
+                <input
+                  type="text"
+                  required
+                  value={id}
+                  onChange={(e) => setId(e.target.value)}
+                  placeholder="Ví dụ: two-sum-advance"
+                  className="csoj-input"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                />
+              </div>
+
               {/* Title */}
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
@@ -609,20 +650,6 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Ví dụ: Tìm số nguyên tố, Tổng lớn nhất, v.v..."
                   className="csoj-input"
-                />
-              </div>
-
-              {/* ID */}
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">Mã định danh duy nhất (ID)</label>
-                <input
-                  type="text"
-                  required
-                  value={id}
-                  onChange={(e) => setId(e.target.value)}
-                  placeholder="Ví dụ: two-sum-advance"
-                  className="csoj-input"
-                  style={{ fontFamily: 'var(--font-mono)' }}
                 />
               </div>
 
@@ -678,6 +705,206 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
               </ul>
             </div>
 
+            
+          </div>
+
+          {/* Section 3: Automated Testing Testcases (The Engine) */}
+          <div className="liquid-glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-element)', paddingBottom: '0.5rem' }}>
+              <CheckCircle size={18} style={{ color: '#10b981' }} />
+              <span>2. Bộ testcase kiểm thử chấm điểm tự động</span>
+            </h2>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-0.75rem', lineHeight: 1.4 }}>
+              Nhập các bộ dữ liệu kiểm thử thực tế. Các giá trị bắt buộc phải là định dạng JSON hợp lệ (ví dụ: mảng phải dùng dấu ngoặc vuông <code>[...]</code>, chuỗi ký tự phải bọc trong dấu nháy kép <code>"..."</code>, giá trị boolean viết thường <code>true</code> / <code>false</code>).
+            </p>
+
+            {/* Testcases Form Wrapper */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem', border: '1px solid var(--border-element)' }}>
+              
+              <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Tải lên file Testcase (.inp, .out)</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Sẽ tự động điền vào ô Input hoặc Output</span>
+                </label>
+                <input
+                  type="file"
+                  accept=".inp,.out,.txt"
+                  onChange={handleFileUpload}
+                  className="csoj-input"
+                  style={{ fontSize: '0.8rem', padding: '0.375rem' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Tham số truyền vào hàm (Input)</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Cú pháp JSON, cách nhau bằng dấu phẩy</span>
+                </label>
+                <input
+                  type="text"
+                  value={tcInputStr}
+                  onChange={(e) => setTcInputStr(e.target.value)}
+                  placeholder={parsedInputNames.length > 1 ? '[2, 7, 11, 15], 9' : '121'}
+                  className="csoj-input"
+                  style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
+                />
+                {testCases.length > 0 && (
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
+                    Tự động ánh xạ vào {testCases.length > 0 ? parsedInputNames.length : 1} biến đầu vào.
+                  </span>
+                )}
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Kết quả mong muốn trả về</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Định dạng JSON</span>
+                </label>
+                <input
+                  type="text"
+                  value={tcExpectedStr}
+                  onChange={(e) => setTcExpectedStr(e.target.value)}
+                  placeholder='[0, 1] hoặc true hoặc "xyz"'
+                  className="csoj-input"
+                  style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
+                />
+              </div>
+
+              <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
+                <button
+                  type="button"
+                  onClick={handleAddTestCase}
+                  className="csoj-btn csoj-btn-primary"
+                  style={{ padding: '0.375rem 1rem', fontSize: '0.825rem', background: '#10b981', color: 'white' }}
+                >
+                  Thêm Testcase
+                </button>
+              </div>
+            </div>
+
+            {/* Testcases List with Real-time Parsing Feedback */}
+            {testCases.length > 0 ? (
+              <div style={{ display: 'grid', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', paddingLeft: '0.5rem' }}>Danh sách Testcases ({testCases.length}):</div>
+                {testCases.map((tc, index) => {
+                  const valCheck = validateTestcase(tc.inputStr, tc.expectedStr);
+                  return (
+                    <div key={index} style={{ padding: '0.5rem 0.75rem', background: valCheck.valid ? 'rgba(16,185,129,0.03)' : 'rgba(239,68,68,0.03)', border: `1px solid ${valCheck.valid ? 'var(--border-element)' : '#ef4444'}`, borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '0.8rem', display: 'flex', flexWrap: 'wrap', gap: '1.5rem', flex: 1 }}>
+                        <div>
+                          <strong style={{ color: '#10b981', marginRight: '0.5rem' }}>TC #{index + 1}:</strong>
+                          <span style={{ color: 'var(--text-muted)' }}>Tham số:</span> <code style={{ fontFamily: 'var(--font-mono)', background: 'rgba(0,0,0,0.2)', padding: '0.125rem 0.25rem', borderRadius: '0.25rem' }}>{tc.inputStr}</code>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)' }}>Kết quả kỳ vọng:</span> <code style={{ fontFamily: 'var(--font-mono)', color: '#10b981', background: 'rgba(0,0,0,0.2)', padding: '0.125rem 0.25rem', borderRadius: '0.25rem' }}>{tc.expectedStr}</code>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTestCase(index)}
+                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p style={{ fontSize: '0.8rem', color: '#ef4444', margin: 0 }}>* Bắt buộc: Phải có ít nhất 1 testcase để hệ thống có thể đối chiếu chấm thi.</p>
+            )}
+          </div>
+
+                    {/* Section 2: Examples Builder */}
+          <div className="liquid-glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-element)', paddingBottom: '0.5rem' }}>
+              <Eye size={18} style={{ color: '#10b981' }} />
+              <span>3. Ví dụ mẫu cho Học sinh</span>
+            </h2>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-0.75rem' }}>
+              Thêm ít nhất 1-2 ví dụ thực tế có giải thích chi tiết để hiển thị trong mô tả đề bài.
+            </p>
+
+            {/* Examples Form Wrapper */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem', border: '1px solid var(--border-element)' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>Đầu vào ví dụ (Dạng Text)</label>
+                <textarea
+                  rows={2}
+                  value={exInput}
+                  onChange={(e) => setExInput(e.target.value)}
+                  placeholder="Ví dụ:&#10;5&#10;2 3 5 7 11"
+                  className="csoj-input"
+                  style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>Đầu ra ví dụ (Dạng Text)</label>
+                <input
+                  type="text"
+                  value={exOutput}
+                  onChange={(e) => setExOutput(e.target.value)}
+                  placeholder="Ví dụ: true hoặc 0 1"
+                  className="csoj-input"
+                  style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>Giải thích chi tiết (Tùy chọn)</label>
+                <input
+                  type="text"
+                  value={exExplanation}
+                  onChange={(e) => setExExplanation(e.target.value)}
+                  placeholder="Ví dụ: Vì 5 là số nguyên tố chỉ chia hết cho 1 và chính nó."
+                  className="csoj-input"
+                  style={{ fontSize: '0.8rem' }}
+                />
+              </div>
+              <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={handleAddExample}
+                  className="csoj-btn csoj-btn-primary"
+                  style={{ padding: '0.375rem 1rem', fontSize: '0.825rem', background: '#3b82f6', color: 'white' }}
+                >
+                  Nạp ví dụ mẫu
+                </button>
+              </div>
+            </div>
+
+            {/* Added Examples List */}
+            {examples.length > 0 ? (
+              <div style={{ display: 'grid', gap: '0.75rem', marginTop: '0.5rem' }}>
+                {examples.map((ex, index) => (
+                  <div key={index} style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-element)', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.8rem', flex: 1 }}>
+                      <span style={{ fontWeight: 'bold', color: '#3b82f6' }}>Ví dụ #{index + 1}:</span>
+                      <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem' }}>
+                        <div><strong>Input:</strong> <pre style={{ display: 'inline', fontFamily: 'var(--font-mono)', background: 'rgba(0,0,0,0.2)', padding: '0.125rem 0.25rem', borderRadius: '0.25rem' }}>{ex.input.replace(/\n/g, ' ')}</pre></div>
+                        <div><strong>Output:</strong> <code style={{ fontFamily: 'var(--font-mono)', background: 'rgba(0,0,0,0.2)', padding: '0.125rem 0.25rem', borderRadius: '0.25rem' }}>{ex.output}</code></div>
+                      </div>
+                      {ex.explanation && <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{ex.explanation}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExample(index)}
+                      style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Chưa có ví dụ mẫu nào được thêm.</p>
+            )}
+          </div>
+
+          <div className="liquid-glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-element)', paddingBottom: '0.5rem' }}>
+              <FileText size={18} style={{ color: '#10b981' }} />
+              <span>4. Nội dung chi tiết đề bài</span>
+            </h2>
             {/* Description Textarea with HTML insertion tools */}
             <div className="form-group" style={{ margin: '0.5rem 0 0 0' }}>
               <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -762,184 +989,6 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Section 2: Examples Builder */}
-          <div className="liquid-glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-element)', paddingBottom: '0.5rem' }}>
-              <Eye size={18} style={{ color: '#10b981' }} />
-              <span>2. Ví dụ mẫu cho Học sinh</span>
-            </h2>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-0.75rem' }}>
-              Thêm ít nhất 1-2 ví dụ thực tế có giải thích chi tiết để hiển thị trong mô tả đề bài.
-            </p>
-
-            {/* Examples Form Wrapper */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem', border: '1px solid var(--border-element)' }}>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>Đầu vào ví dụ (Dạng Text)</label>
-                <textarea
-                  rows={2}
-                  value={exInput}
-                  onChange={(e) => setExInput(e.target.value)}
-                  placeholder="Ví dụ:&#10;5&#10;2 3 5 7 11"
-                  className="csoj-input"
-                  style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
-                />
-              </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>Đầu ra ví dụ (Dạng Text)</label>
-                <input
-                  type="text"
-                  value={exOutput}
-                  onChange={(e) => setExOutput(e.target.value)}
-                  placeholder="Ví dụ: true hoặc 0 1"
-                  className="csoj-input"
-                  style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
-                />
-              </div>
-              <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>Giải thích chi tiết (Tùy chọn)</label>
-                <input
-                  type="text"
-                  value={exExplanation}
-                  onChange={(e) => setExExplanation(e.target.value)}
-                  placeholder="Ví dụ: Vì 5 là số nguyên tố chỉ chia hết cho 1 và chính nó."
-                  className="csoj-input"
-                  style={{ fontSize: '0.8rem' }}
-                />
-              </div>
-              <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={handleAddExample}
-                  className="csoj-btn csoj-btn-primary"
-                  style={{ padding: '0.375rem 1rem', fontSize: '0.825rem', background: '#3b82f6', color: 'white' }}
-                >
-                  Nạp ví dụ mẫu
-                </button>
-              </div>
-            </div>
-
-            {/* Added Examples List */}
-            {examples.length > 0 ? (
-              <div style={{ display: 'grid', gap: '0.75rem', marginTop: '0.5rem' }}>
-                {examples.map((ex, index) => (
-                  <div key={index} style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-element)', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.8rem', flex: 1 }}>
-                      <span style={{ fontWeight: 'bold', color: '#3b82f6' }}>Ví dụ #{index + 1}:</span>
-                      <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem' }}>
-                        <div><strong>Input:</strong> <pre style={{ display: 'inline', fontFamily: 'var(--font-mono)', background: 'rgba(0,0,0,0.2)', padding: '0.125rem 0.25rem', borderRadius: '0.25rem' }}>{ex.input.replace(/\n/g, ' ')}</pre></div>
-                        <div><strong>Output:</strong> <code style={{ fontFamily: 'var(--font-mono)', background: 'rgba(0,0,0,0.2)', padding: '0.125rem 0.25rem', borderRadius: '0.25rem' }}>{ex.output}</code></div>
-                      </div>
-                      {ex.explanation && <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{ex.explanation}</p>}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveExample(index)}
-                      style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' }}
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Chưa có ví dụ mẫu nào được thêm.</p>
-            )}
-          </div>
-
-          {/* Section 3: Automated Testing Testcases (The Engine) */}
-          <div className="liquid-glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-element)', paddingBottom: '0.5rem' }}>
-              <CheckCircle size={18} style={{ color: '#10b981' }} />
-              <span>3. Bộ testcase kiểm thử chấm điểm tự động</span>
-            </h2>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-0.75rem', lineHeight: 1.4 }}>
-              Nhập các bộ dữ liệu kiểm thử thực tế. Các giá trị bắt buộc phải là định dạng JSON hợp lệ (ví dụ: mảng phải dùng dấu ngoặc vuông <code>[...]</code>, chuỗi ký tự phải bọc trong dấu nháy kép <code>"..."</code>, giá trị boolean viết thường <code>true</code> / <code>false</code>).
-            </p>
-
-            {/* Testcases Form Wrapper */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem', border: '1px solid var(--border-element)' }}>
-              
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Tham số truyền vào hàm</span>
-                  <span style={{ color: 'var(--text-muted)' }}>Cú pháp JSON, cách nhau bằng dấu phẩy</span>
-                </label>
-                <input
-                  type="text"
-                  value={tcInputStr}
-                  onChange={(e) => setTcInputStr(e.target.value)}
-                  placeholder={parsedInputNames.length > 1 ? '[2, 7, 11, 15], 9' : '121'}
-                  className="csoj-input"
-                  style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
-                />
-                {testCases.length > 0 && (
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
-                    Tự động ánh xạ vào {testCases.length > 0 ? parsedInputNames.length : 1} biến đầu vào.
-                  </span>
-                )}
-              </div>
-
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Kết quả mong muốn trả về</span>
-                  <span style={{ color: 'var(--text-muted)' }}>Định dạng JSON</span>
-                </label>
-                <input
-                  type="text"
-                  value={tcExpectedStr}
-                  onChange={(e) => setTcExpectedStr(e.target.value)}
-                  placeholder='[0, 1] hoặc true hoặc "xyz"'
-                  className="csoj-input"
-                  style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
-                />
-              </div>
-
-              <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
-                <button
-                  type="button"
-                  onClick={handleAddTestCase}
-                  className="csoj-btn csoj-btn-primary"
-                  style={{ padding: '0.375rem 1rem', fontSize: '0.825rem', background: '#10b981', color: 'white' }}
-                >
-                  Thêm Testcase
-                </button>
-              </div>
-            </div>
-
-            {/* Testcases List with Real-time Parsing Feedback */}
-            {testCases.length > 0 ? (
-              <div style={{ display: 'grid', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', paddingLeft: '0.5rem' }}>Danh sách Testcases ({testCases.length}):</div>
-                {testCases.map((tc, index) => {
-                  const valCheck = validateTestcase(tc.inputStr, tc.expectedStr);
-                  return (
-                    <div key={index} style={{ padding: '0.5rem 0.75rem', background: valCheck.valid ? 'rgba(16,185,129,0.03)' : 'rgba(239,68,68,0.03)', border: `1px solid ${valCheck.valid ? 'var(--border-element)' : '#ef4444'}`, borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontSize: '0.8rem', display: 'flex', flexWrap: 'wrap', gap: '1.5rem', flex: 1 }}>
-                        <div>
-                          <strong style={{ color: '#10b981', marginRight: '0.5rem' }}>TC #{index + 1}:</strong>
-                          <span style={{ color: 'var(--text-muted)' }}>Tham số:</span> <code style={{ fontFamily: 'var(--font-mono)', background: 'rgba(0,0,0,0.2)', padding: '0.125rem 0.25rem', borderRadius: '0.25rem' }}>{tc.inputStr}</code>
-                        </div>
-                        <div>
-                          <span style={{ color: 'var(--text-muted)' }}>Kết quả kỳ vọng:</span> <code style={{ fontFamily: 'var(--font-mono)', color: '#10b981', background: 'rgba(0,0,0,0.2)', padding: '0.125rem 0.25rem', borderRadius: '0.25rem' }}>{tc.expectedStr}</code>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTestCase(index)}
-                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p style={{ fontSize: '0.8rem', color: '#ef4444', margin: 0 }}>* Bắt buộc: Phải có ít nhất 1 testcase để hệ thống có thể đối chiếu chấm thi.</p>
-            )}
           </div>
 
           {/* Form Actions Buttons */}
