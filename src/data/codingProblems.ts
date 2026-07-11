@@ -5,18 +5,14 @@ export const CODING_PROBLEMS: CodingProblem[] = [
     id: 'two-sum',
     title: 'Two Sum',
     difficulty: 'Dễ',
-    descriptionHtml: `
-      <p>Cho một mảng số nguyên <code>nums</code> và một số nguyên <code>target</code>.</p>
-      <p>Bạn cần tìm hai chỉ số <code>i</code> và <code>j</code> sao cho <code>nums[i] + nums[j] == target</code> và <code>i != j</code>.</p>
-      <p>Trả về chỉ số của hai số đó dưới dạng một mảng chứa 2 phần tử.</p>
-    `,
-    inputFormat: `
-      <ul>
-        <li>Dòng đầu tiên chứa số nguyên n (2 ≤ n ≤ 10⁵) là số lượng phần tử của mảng.</li>
-        <li>Dòng thứ hai chứa n số nguyên nums[i] cách nhau bởi khoảng trắng.</li>
-        <li>Dòng thứ ba chứa số nguyên target.</li>
-      </ul>
-    `,
+    descriptionHtml: `Cho một mảng số nguyên \`nums\` và một số nguyên \`target\`.
+
+Bạn cần tìm hai chỉ số \`i\` và \`j\` sao cho \`nums[i] + nums[j] == target\` và \`i != j\`.
+
+Trả về chỉ số của hai số đó dưới dạng một mảng chứa 2 phần tử.`,
+    inputFormat: `- Dòng đầu tiên chứa số nguyên n (2 ≤ n ≤ 10⁵) là số lượng phần tử của mảng.
+- Dòng thứ hai chứa n số nguyên nums[i] cách nhau bởi khoảng trắng.
+- Dòng thứ ba chứa số nguyên target.`,
     outputFormat: 'In ra hai chỉ số i và j (i < j) thỏa mãn điều kiện cách nhau bởi khoảng trắng.',
     examples: [
       {
@@ -102,15 +98,10 @@ end;
     id: 'palindrome-number',
     title: 'Palindrome Number',
     difficulty: 'Dễ',
-    descriptionHtml: `
-      <p>Cho một số nguyên <code>x</code>.</p>
-      <p>Trả về <code>true</code> nếu <code>x</code> là một số đối xứng (đọc từ trái sang phải giống hệt như đọc từ phải sang trái), ngược lại trả về <code>false</code>.</p>
-    `,
-    inputFormat: `
-      <ul>
-        <li>Một dòng duy nhất chứa số nguyên x (-2³¹ ≤ x ≤ 2³¹ - 1).</li>
-      </ul>
-    `,
+    descriptionHtml: `Cho một số nguyên \`x\`.
+
+Trả về \`true\` nếu \`x\` là một số đối xứng (đọc từ trái sang phải giống hệt như đọc từ phải sang trái), ngược lại trả về \`false\`.`,
+    inputFormat: `- Một dòng duy nhất chứa số nguyên x (-2³¹ ≤ x ≤ 2³¹ - 1).`,
     outputFormat: 'In ra "true" nếu x là số đối xứng, ngược lại in ra "false".',
     examples: [
       {
@@ -195,21 +186,16 @@ end;
     id: 'valid-parentheses',
     title: 'Valid Parentheses',
     difficulty: 'Trung bình',
-    descriptionHtml: `
-      <p>Cho một chuỗi ký tự <code>s</code> chỉ chứa các ký tự ngoặc: <code>'('</code>, <code>')'</code>, <code>'{'</code>, <code>'}'</code>, <code>'['</code> và <code>']'</code>.</p>
-      <p>Hãy xác định xem chuỗi đầu vào có hợp lệ hay không.</p>
-      <p>Một chuỗi đầu vào được coi là hợp lệ nếu:</p>
-      <ol>
-        <li>Các dấu ngoặc mở phải được đóng bằng các dấu ngoặc cùng loại.</li>
-        <li>Các dấu ngoặc phải được đóng theo đúng thứ tự mở trước đó.</li>
-        <li>Mỗi dấu ngoặc đóng có một dấu ngoặc mở tương ứng cùng loại đứng trước.</li>
-      </ol>
-    `,
-    inputFormat: `
-      <ul>
-        <li>Một dòng duy nhất chứa chuỗi s (1 ≤ s.length ≤ 10⁴).</li>
-      </ul>
-    `,
+    descriptionHtml: `Cho một chuỗi ký tự \`s\` chỉ chứa các ký tự ngoặc: \`'('\`, \`')'\`, \`'{'\`, \`'}'\`, \`'['\` và \`']'\`.
+
+Hãy xác định xem chuỗi đầu vào có hợp lệ hay không.
+
+Một chuỗi đầu vào được coi là hợp lệ nếu:
+
+1. Các dấu ngoặc mở phải được đóng bằng các dấu ngoặc cùng loại.
+2. Các dấu ngoặc phải được đóng theo đúng thứ tự mở trước đó.
+3. Mỗi dấu ngoặc đóng có một dấu ngoặc mở tương ứng cùng loại đứng trước.`,
+    inputFormat: `- Một dòng duy nhất chứa chuỗi s (1 ≤ s.length ≤ 10⁴).`,
     outputFormat: 'In ra "true" nếu chuỗi hợp lệ, ngược lại in ra "false".',
     examples: [
       {

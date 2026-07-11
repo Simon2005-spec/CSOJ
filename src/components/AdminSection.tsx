@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Plus, 
-  Trash2, 
-  LogOut, 
-  Code, 
-  CheckCircle, 
-  AlertTriangle, 
-  FileText, 
-  Settings,
-  HelpCircle,
-  Eye,
-  X,
-  Briefcase,
-  Pencil
+   Plus, 
+   Trash2, 
+   LogOut, 
+   Code, 
+   CheckCircle, 
+   AlertTriangle, 
+   FileText, 
+   Settings,
+   HelpCircle,
+   Eye,
+   X,
+   Briefcase,
+   Pencil
 } from 'lucide-react';
 import { CodingProblem } from '../types';
+import Markdown from 'react-markdown';
 
 interface AdminSectionProps {
   problems: CodingProblem[];
@@ -69,7 +70,7 @@ export default function AdminSection({
     return [];
   };
 
-  const insertHTML = (before: string, after: string) => {
+  const insertMarkdown = (before: string, after: string) => {
     const el = textareaRef.current;
     if (!el) {
       setDescription(prev => prev + before + after);
@@ -88,13 +89,13 @@ export default function AdminSection({
   };
 
   const insertStandardTemplate = () => {
-    const template = `<p>Cho một số nguyên dương <b>n</b>. Hãy viết chương trình kiểm tra xem số đó có phải là số nguyên tố hay không.</p>
+    const template = `Cho một số nguyên dương **n**. Hãy viết chương trình kiểm tra xem số đó có phải là số nguyên tố hay không.
 
-<h3>Đầu vào (Input)</h3>
-<p>Một dòng duy nhất chứa số nguyên dương <b>n</b> (1 ≤ n ≤ 10^9).</p>
+### Đầu vào (Input)
+Một dòng duy nhất chứa số nguyên dương **n** (1 ≤ n ≤ 10^9).
 
-<h3>Đầu ra (Output)</h3>
-<p>Trả về <b>true</b> nếu là số nguyên tố, ngược lại trả về <b>false</b>.</p>`;
+### Đầu ra (Output)
+Trả về **true** nếu là số nguyên tố, ngược lại trả về **false**.`;
     setDescription(template);
   };
 
@@ -385,16 +386,7 @@ export default function AdminSection({
       });
     }
 
-    // Accept raw HTML directly if present, otherwise format text with paragraphs
     let finalDescHtml = description.trim();
-    if (!finalDescHtml.includes('<p>') && !finalDescHtml.includes('<div>') && !finalDescHtml.includes('<ul>') && !finalDescHtml.includes('<h3>')) {
-      finalDescHtml = finalDescHtml
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
-        .map(line => `<p>${line}</p>`)
-        .join('\n');
-    }
 
     // Automatically generate templates programmatically on submission
     const argsList = finalInputNames.join(', ');
@@ -559,7 +551,7 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
                   </tr>
                 ) : (
                   problems.map((prob) => (
-                    <tr key={prob.id} style={{ borderBottom: '1px solid var(--border-element)', hover: { background: 'rgba(255,255,255,0.01)' } }}>
+                    <tr key={prob.id} style={{ borderBottom: '1px solid var(--border-element)' }}>
                       <td style={{ padding: '1rem', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-muted)' }}>{prob.id}</td>
                       <td style={{ padding: '1rem', fontWeight: 600 }}>{prob.title}</td>
                       <td style={{ padding: '1rem' }}>
@@ -773,54 +765,54 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
               <FileText size={18} style={{ color: '#10b981' }} />
               <span>3. Nội dung chi tiết đề bài</span>
             </h2>
-            {/* Description Textarea with HTML insertion tools */}
+            {/* Description Textarea with Markdown insertion tools */}
             <div className="form-group" style={{ margin: '0.5rem 0 0 0' }}>
               <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <span style={{ fontWeight: 600 }}>Mô tả chi tiết đề bài (Sử dụng mã HTML chuyên nghiệp)</span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Có thể viết các thẻ b, code, pre, h3, ul, li</span>
+                <span style={{ fontWeight: 600 }}>Mô tả chi tiết đề bài (Sử dụng Markdown chuyên nghiệp)</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Hỗ trợ đầy đủ cú pháp Markdown: **, \`, \`\`\`, ###, -</span>
               </label>
-
-              {/* Quick HTML Insertion Tools Bar */}
+ 
+              {/* Quick Markdown Insertion Tools Bar */}
               <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', marginBottom: '0.75rem', padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem', border: '1px solid var(--border-element)' }}>
                 <button
                   type="button"
-                  onClick={() => insertHTML('<b>', '</b>')}
+                  onClick={() => insertMarkdown('**', '**')}
                   className="csoj-btn csoj-btn-outline"
                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', background: 'transparent' }}
                 >
-                  In đậm (b)
+                  In đậm (**)
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertHTML('<code>', '</code>')}
+                  onClick={() => insertMarkdown('`', '`')}
                   className="csoj-btn csoj-btn-outline"
                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', background: 'transparent' }}
                 >
-                  Mã code (code)
+                  Mã dòng (`)
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertHTML('<pre>', '</pre>')}
+                  onClick={() => insertMarkdown('\n```\n', '\n```\n')}
                   className="csoj-btn csoj-btn-outline"
                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', background: 'transparent' }}
                 >
-                  Khối mã (pre)
+                  Khối mã (```)
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertHTML('<ul>\n  <li>', '</li>\n</ul>')}
+                  onClick={() => insertMarkdown('- ', '\n')}
                   className="csoj-btn csoj-btn-outline"
                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', background: 'transparent' }}
                 >
-                  Danh sách (ul)
+                  Danh sách (-)
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertHTML('<h3>', '</h3>')}
+                  onClick={() => insertMarkdown('### ', '\n')}
                   className="csoj-btn csoj-btn-outline"
                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', background: 'transparent' }}
                 >
-                  Tiêu đề phụ (h3)
+                  Tiêu đề phụ (###)
                 </button>
                 <button
                   type="button"
@@ -831,29 +823,27 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
                   Mẫu đề thi chuẩn 📝
                 </button>
               </div>
-
+ 
               <textarea
                 ref={textareaRef}
                 required
                 rows={10}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Nhập đề bài ở định dạng HTML hoặc sử dụng nút 'Mẫu đề thi chuẩn' ở trên để tự động điền mẫu."
+                placeholder="Nhập đề bài ở định dạng Markdown hoặc sử dụng nút 'Mẫu đề thi chuẩn' ở trên để tự động điền mẫu."
                 className="csoj-input"
                 style={{ resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.875rem', lineHeight: '1.5' }}
               />
-
-              {/* HTML Live Preview Box */}
+ 
+              {/* Markdown Live Preview Box */}
               {description.trim() && (
                 <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', border: '1px dashed var(--border-element)', borderRadius: '0.5rem' }}>
                   <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#10b981', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
                     Xem trước Đề bài (Live Preview)
                   </div>
-                  <div 
-                    className="markdown-body coding-desc-preview" 
-                    dangerouslySetInnerHTML={{ __html: description }} 
-                    style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.6 }} 
-                  />
+                  <div className="problem-prose coding-desc-preview" style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.6 }}>
+                    <Markdown>{description}</Markdown>
+                  </div>
                 </div>
               )}
             </div>

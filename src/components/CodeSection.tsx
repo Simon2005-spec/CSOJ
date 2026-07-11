@@ -5,6 +5,7 @@ import { evaluateCode } from '../lib/judge';
 import { Play, CheckSquare, Terminal, ChevronRight, CheckCircle2, Circle, ZoomIn, ZoomOut, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { highlightCode } from '../utils/highlighter';
+import Markdown from 'react-markdown';
 
 interface CodeSectionProps {
   problems: CodingProblem[];
@@ -330,30 +331,30 @@ export default function CodeSection({
         <div className="problem-panel">
           <div className="problem-header">
             <h2 className="problem-title">{problem.title}</h2>
-            <span className={`badge-difficulty ${problem.difficulty === 'Dễ' || problem.difficulty === 'Easy' ? 'easy' : 'medium'}`}>
+            <span className={`badge-difficulty ${problem.difficulty === 'Dễ' ? 'easy' : 'medium'}`}>
               {problem.difficulty}
             </span>
           </div>
 
-          {/* Description Prose HTML */}
-          <div 
-            className="problem-prose"
-            dangerouslySetInnerHTML={{ __html: problem.descriptionHtml }}
-          />
+          {/* Description Prose Markdown */}
+          <div className="problem-prose">
+            <Markdown>{problem.descriptionHtml}</Markdown>
+          </div>
 
           {/* Input specification */}
           <div className="description-block">
             <span className="description-block-title">{t.inputLabel}</span>
-            <div 
-              className="description-block-text"
-              dangerouslySetInnerHTML={{ __html: problem.inputFormat }}
-            />
+            <div className="description-block-text">
+              <Markdown>{problem.inputFormat}</Markdown>
+            </div>
           </div>
 
           {/* Output specification */}
           <div className="description-block">
             <span className="description-block-title">{t.outputLabel}</span>
-            <p className="description-block-text">{problem.outputFormat}</p>
+            <div className="description-block-text">
+              <Markdown>{problem.outputFormat}</Markdown>
+            </div>
           </div>
 
           {/* Sample Examples */}

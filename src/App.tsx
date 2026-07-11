@@ -268,7 +268,7 @@ export default function App() {
           setIsDark={setIsDark}
           onSubmit={() => {}}
           isFinished={false}
-          isHome={activeTab === 'home'}
+          isHome={false}
           onGoHome={() => setActiveTab('home')}
           onLogout={handleLogout}
           language={language}
