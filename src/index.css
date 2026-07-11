@@ -1006,6 +1006,22 @@ html, body, #root {
   background: rgba(255,255,255,0.08);
 }
 
+.problem-prose h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+}
+
+.problem-prose h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 1.125rem;
+  margin-bottom: 0.625rem;
+  color: var(--text-primary);
+}
+
 .problem-prose h3 {
   font-size: 1.125rem;
   font-weight: 700;
@@ -1028,6 +1044,75 @@ html, body, #root {
 
 .problem-prose li {
   margin-bottom: 0.25rem;
+}
+
+/* Markdown Tables styling */
+.problem-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.problem-prose th, .problem-prose td {
+  border: 1px solid var(--border-element);
+  padding: 0.625rem 0.875rem;
+  text-align: left;
+}
+
+.problem-prose th {
+  background-color: rgba(255, 255, 255, 0.04);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.dark .problem-prose th {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.problem-prose tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+/* Markdown Blockquote styling */
+.problem-prose blockquote {
+  border-left: 4px solid var(--color-easy);
+  background: rgba(255, 255, 255, 0.02);
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
+  border-radius: 0 0.375rem 0.375rem 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.dark .problem-prose blockquote {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Markdown Code block styling */
+.problem-prose pre {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-element);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.problem-prose pre code {
+  background: transparent !important;
+  padding: 0 !important;
+  font-weight: normal;
+  display: block;
+}
+
+/* Katex / Math center alignment */
+.katex-display {
+  margin: 0.75rem 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 /* Blocks styling for descriptions */

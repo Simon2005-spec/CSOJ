@@ -16,6 +16,10 @@ import {
 } from 'lucide-react';
 import { CodingProblem } from '../types';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 
 interface AdminSectionProps {
   problems: CodingProblem[];
@@ -769,7 +773,7 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
             <div className="form-group" style={{ margin: '0.5rem 0 0 0' }}>
               <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <span style={{ fontWeight: 600 }}>Mô tả chi tiết đề bài (Sử dụng Markdown chuyên nghiệp)</span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Hỗ trợ đầy đủ cú pháp Markdown: **, \`, \`\`\`, ###, -</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Hỗ trợ đầy đủ cú pháp Markdown: **, *, \`, \`\`\`, ###, -</span>
               </label>
  
               {/* Quick Markdown Insertion Tools Bar */}
@@ -781,6 +785,14 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', background: 'transparent' }}
                 >
                   In đậm (**)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertMarkdown('*', '*')}
+                  className="csoj-btn csoj-btn-outline"
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto', background: 'transparent' }}
+                >
+                  In nghiêng (*)
                 </button>
                 <button
                   type="button"
@@ -842,7 +854,9 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
                     Xem trước Đề bài (Live Preview)
                   </div>
                   <div className="problem-prose coding-desc-preview" style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.6 }}>
-                    <Markdown>{description}</Markdown>
+                    <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
+                      {description}
+                    </Markdown>
                   </div>
                 </div>
               )}

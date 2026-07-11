@@ -6,6 +6,10 @@ import { Play, CheckSquare, Terminal, ChevronRight, CheckCircle2, Circle, ZoomIn
 import { motion } from 'framer-motion';
 import { highlightCode } from '../utils/highlighter';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 
 interface CodeSectionProps {
   problems: CodingProblem[];
@@ -338,14 +342,18 @@ export default function CodeSection({
 
           {/* Description Prose Markdown */}
           <div className="problem-prose">
-            <Markdown>{problem.descriptionHtml}</Markdown>
+            <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
+              {problem.descriptionHtml}
+            </Markdown>
           </div>
 
           {/* Input specification */}
           <div className="description-block">
             <span className="description-block-title">{t.inputLabel}</span>
             <div className="description-block-text">
-              <Markdown>{problem.inputFormat}</Markdown>
+              <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
+                {problem.inputFormat}
+              </Markdown>
             </div>
           </div>
 
@@ -353,7 +361,9 @@ export default function CodeSection({
           <div className="description-block">
             <span className="description-block-title">{t.outputLabel}</span>
             <div className="description-block-text">
-              <Markdown>{problem.outputFormat}</Markdown>
+              <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
+                {problem.outputFormat}
+              </Markdown>
             </div>
           </div>
 
