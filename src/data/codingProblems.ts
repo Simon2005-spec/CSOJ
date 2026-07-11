@@ -10,9 +10,9 @@ export const CODING_PROBLEMS: CodingProblem[] = [
 Bạn cần tìm hai chỉ số \`i\` và \`j\` sao cho \`nums[i] + nums[j] == target\` và \`i != j\`.
 
 Trả về chỉ số của hai số đó dưới dạng một mảng chứa 2 phần tử.`,
-    inputFormat: `- Dòng đầu tiên chứa số nguyên n (2 ≤ n ≤ 10⁵) là số lượng phần tử của mảng.
-- Dòng thứ hai chứa n số nguyên nums[i] cách nhau bởi khoảng trắng.
-- Dòng thứ ba chứa số nguyên target.`,
+    inputFormat: `- Dòng đầu tiên chứa số nguyên $n$ ($2 \le n \le 10^5$) là số lượng phần tử của mảng.
+- Dòng thứ hai chứa $n$ số nguyên $nums[i]$ cách nhau bởi khoảng trắng.
+- Dòng thứ ba chứa số nguyên $target$.`,
     outputFormat: 'In ra hai chỉ số i và j (i < j) thỏa mãn điều kiện cách nhau bởi khoảng trắng.',
     examples: [
       {
@@ -101,7 +101,7 @@ end;
     descriptionHtml: `Cho một số nguyên \`x\`.
 
 Trả về \`true\` nếu \`x\` là một số đối xứng (đọc từ trái sang phải giống hệt như đọc từ phải sang trái), ngược lại trả về \`false\`.`,
-    inputFormat: `- Một dòng duy nhất chứa số nguyên x (-2³¹ ≤ x ≤ 2³¹ - 1).`,
+    inputFormat: `- Một dòng duy nhất chứa số nguyên $x$ ($-2^{31} \le x \le 2^{31} - 1$).`,
     outputFormat: 'In ra "true" nếu x là số đối xứng, ngược lại in ra "false".',
     examples: [
       {
@@ -195,7 +195,7 @@ Một chuỗi đầu vào được coi là hợp lệ nếu:
 1. Các dấu ngoặc mở phải được đóng bằng các dấu ngoặc cùng loại.
 2. Các dấu ngoặc phải được đóng theo đúng thứ tự mở trước đó.
 3. Mỗi dấu ngoặc đóng có một dấu ngoặc mở tương ứng cùng loại đứng trước.`,
-    inputFormat: `- Một dòng duy nhất chứa chuỗi s (1 ≤ s.length ≤ 10⁴).`,
+    inputFormat: `- Một dòng duy nhất chứa chuỗi $s$ ($1 \le s.length \le 10^4$).`,
     outputFormat: 'In ra "true" nếu chuỗi hợp lệ, ngược lại in ra "false".',
     examples: [
       {

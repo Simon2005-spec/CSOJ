@@ -84,7 +84,29 @@ export default function App() {
   const [problems, setProblems] = useState<CodingProblem[]>(() => {
     try {
       const saved = safeStorage.getItem('csoj_problems');
-      let loadedProblems = saved ? JSON.parse(saved) : CODING_PROBLEMS;
+      let loadedProblems = saved ? JSON.parse(saved) : [...CODING_PROBLEMS];
+      
+      // Force update default/core problems if they match standard CODING_PROBLEMS IDs
+      // so any code-level updates (such as markdown or math formatting) take effect instantly
+      loadedProblems = loadedProblems.map((p: any) => {
+        const defaultMatch = CODING_PROBLEMS.find((dp) => dp.id === p.id);
+        if (defaultMatch) {
+          return {
+            ...defaultMatch,
+            // If they had customized standard problems via admin, we still prefer code updates here to guarantee markdown rendering
+          };
+        }
+        return p;
+      });
+
+      // Append any default problems that might be missing entirely
+      const loadedIds = loadedProblems.map((p: any) => p.id);
+      CODING_PROBLEMS.forEach((dp) => {
+        if (!loadedIds.includes(dp.id)) {
+          loadedProblems.push(dp);
+        }
+      });
+
       // Remove any #include or main() from loaded C++ templates
       loadedProblems = loadedProblems.map((p: any) => {
         if (p.defaultCode && p.defaultCode.cpp) {
@@ -98,7 +120,7 @@ export default function App() {
       });
       return loadedProblems;
     } catch (e) {
-      return CODING_PROBLEMS;
+      return [...CODING_PROBLEMS];
     }
   });
 
