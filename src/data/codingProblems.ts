@@ -50,13 +50,7 @@ export const CODING_PROBLEMS: CodingProblem[] = [
         seen[num] = i
     return []
 `,
-      cpp: `#include <iostream>
-#include <vector>
-#include <unordered_map>
-
-using namespace std;
-
-vector<int> twoSum(vector<int>& nums, int target) {
+      cpp: `vector<int> twoSum(vector<int>& nums, int target) {
     unordered_map<int, int> seen;
     for (int i = 0; i < nums.size(); i++) {
         int complement = target - nums[i];
@@ -66,17 +60,6 @@ vector<int> twoSum(vector<int>& nums, int target) {
         seen[nums[i]] = i;
     }
     return {};
-}
-
-int main() {
-    int n, target;
-    if (!(cin >> n)) return 0;
-    vector<int> nums(n);
-    for (int i = 0; i < n; i++) cin >> nums[i];
-    cin >> target;
-    vector<int> ans = twoSum(nums, target);
-    cout << ans[0] << " " << ans[1] << endl;
-    return 0;
 }
 `,
       pascal: `function twoSum(nums: array of integer; target: integer): array of integer;
@@ -166,11 +149,7 @@ end;
         
     return x == reverted_number or x == reverted_number // 10
 `,
-      cpp: `#include <iostream>
-
-using namespace std;
-
-bool isPalindrome(int x) {
+      cpp: `bool isPalindrome(int x) {
     if (x < 0 || (x % 10 == 0 && x != 0)) {
         return false;
     }
@@ -180,14 +159,6 @@ bool isPalindrome(int x) {
         x /= 10;
     }
     return x == revertedNumber || x == revertedNumber / 10;
-}
-
-int main() {
-    int x;
-    if (cin >> x) {
-        cout << (isPalindrome(x) ? "true" : "false") << endl;
-    }
-    return 0;
 }
 `,
       pascal: `function isPalindrome(x: integer): boolean;
@@ -283,13 +254,7 @@ end;
             stack.append(char)
     return not stack
 `,
-      cpp: `#include <iostream>
-#include <stack>
-#include <unordered_map>
-
-using namespace std;
-
-bool isValid(string s) {
+      cpp: `bool isValid(string s) {
     stack<char> st;
     unordered_map<char, char> mapping = {
         {')', '('},
@@ -306,14 +271,6 @@ bool isValid(string s) {
         }
     }
     return st.empty();
-}
-
-int main() {
-    string s;
-    if (cin >> s) {
-        cout << (isValid(s) ? "true" : "false") << endl;
-    }
-    return 0;
 }
 `,
       pascal: `function isValid(s: string): boolean;

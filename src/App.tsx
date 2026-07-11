@@ -84,7 +84,19 @@ export default function App() {
   const [problems, setProblems] = useState<CodingProblem[]>(() => {
     try {
       const saved = safeStorage.getItem('csoj_problems');
-      return saved ? JSON.parse(saved) : CODING_PROBLEMS;
+      let loadedProblems = saved ? JSON.parse(saved) : CODING_PROBLEMS;
+      // Remove any #include or main() from loaded C++ templates
+      loadedProblems = loadedProblems.map((p: any) => {
+        if (p.defaultCode && p.defaultCode.cpp) {
+          let cppCode = p.defaultCode.cpp;
+          cppCode = cppCode.replace(/#include\s*[<"][^>"]*[>"]\n?/g, '');
+          cppCode = cppCode.replace(/using namespace std;\n?/g, '');
+          cppCode = cppCode.replace(/int main\(\) \{[\s\S]*\}\n?/g, '');
+          p.defaultCode.cpp = cppCode.trimStart();
+        }
+        return p;
+      });
+      return loadedProblems;
     } catch (e) {
       return CODING_PROBLEMS;
     }

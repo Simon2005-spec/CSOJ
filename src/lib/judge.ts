@@ -273,6 +273,9 @@ export function transpileCppToJS(code: string, entryFnName: string): string {
 
   // standard functions
   clean = clean.replace(/\.size\(\)/g, '.length');
+  clean = clean.replace(/\.length\(\)/g, '.length');
+  clean = clean.replace(/([a-zA-Z0-9_]+)\.clear\(\)\s*;/g, 'if ($1 instanceof Set || $1 instanceof Map) { $1.clear(); } else { $1.length = 0; };');
+  
   clean = clean.replace(/([a-zA-Z0-9_]+)\.top\(\)/g, '_get_top($1)');
   clean = clean.replace(/([a-zA-Z0-9_]+)\.front\(\)/g, '$1[0]');
   clean = clean.replace(/([a-zA-Z0-9_]+)\.back\(\)/g, '$1[$1.length - 1]');

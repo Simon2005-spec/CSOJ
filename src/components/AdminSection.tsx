@@ -383,41 +383,36 @@ export default function AdminSection({
     const argsList = finalInputNames.join(', ');
     const pyFn = derivedFnName.replace(/([A-Z])/g, '_$1').toLowerCase();
     
-    const pyTemplate = `def ${pyFn}(${argsList}):
+    let finalDefaultCode: { [lang: string]: string } = {
+      python: `def ${pyFn}(${argsList}):
     """
     Hãy viết hàm xử lý thuật toán tại đây.
     """
     # Viết code của bạn ở đây
     return None
-`;
-
-    const pasTemplate = `function ${derivedFnName}(${finalInputNames.map(name => `${name}: integer`).join('; ')}): integer;
+`,
+      pascal: `function ${derivedFnName}(${finalInputNames.map(name => `${name}: integer`).join('; ')}): integer;
 var
     // Khai báo biến tại đây nếu cần thiết
 begin
     // Viết code của bạn ở đây
     exit(0);
 end;
-`;
-
-    const cppTemplate = `#include <iostream>
-#include <vector>
-#include <string>
-
-using namespace std;
-
-// Thay đổi kiểu dữ liệu trả về và tham số nếu cần thiết
+`,
+      cpp: `// Thay đổi kiểu dữ liệu trả về và tham số nếu cần thiết
 int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
     // Viết code của bạn ở đây
     return 0;
 }
+`
+    };
 
-int main() {
-    int ${finalInputNames.join(', ')};
-    // Đọc dữ liệu từ cin và gọi hàm xử lý của bạn
-    return 0;
-}
-`;
+    if (editingProblemId) {
+      const existing = problems.find(p => p.id === editingProblemId);
+      if (existing && existing.defaultCode) {
+        finalDefaultCode = existing.defaultCode;
+      }
+    }
 
     const newProblem: CodingProblem = {
       id: id.trim(),
@@ -430,11 +425,7 @@ int main() {
       constraints,
       entryFunctionName: derivedFnName,
       inputNames: finalInputNames,
-      defaultCode: {
-        python: pyTemplate,
-        cpp: cppTemplate,
-        pascal: pasTemplate
-      },
+      defaultCode: finalDefaultCode,
       testCases: validatedTestCases
     };
 
