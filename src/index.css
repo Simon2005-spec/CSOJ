@@ -1124,6 +1124,7 @@ html, body, #root {
   flex-direction: column;
   background: var(--bg-editor);
   overflow: hidden;
+  min-height: 0;
 }
 
 /* Header toolbar inside editor */
@@ -1171,6 +1172,7 @@ html, body, #root {
   display: flex;
   overflow: hidden;
   position: relative;
+  min-height: 0;
 }
 
 .editor-gutter {
@@ -1197,6 +1199,7 @@ html, body, #root {
   flex: 1;
   height: 100%;
   overflow: hidden;
+  min-height: 0;
 }
 
 .editor-highlight {

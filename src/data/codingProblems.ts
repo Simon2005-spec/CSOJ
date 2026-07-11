@@ -30,11 +30,7 @@ export const CODING_PROBLEMS: CodingProblem[] = [
         explanation: "nums[1] + nums[2] = 2 + 4 = 6. Do đó kết quả trả về là 1 2."
       }
     ],
-    constraints: [
-      "2 ≤ n ≤ 10⁵",
-      "-10⁹ ≤ nums[i], target ≤ 10⁹",
-      "Chỉ có duy nhất một đáp án đúng."
-    ],
+    constraints: [],
     entryFunctionName: 'twoSum',
     inputNames: ['nums', 'target'],
     defaultCode: {
@@ -128,10 +124,7 @@ end;
         explanation: "Từ trái sang phải là -121, nhưng từ phải sang trái là 121-. Do đó không đối xứng."
       }
     ],
-    constraints: [
-      "-2³¹ ≤ x ≤ 2³¹ - 1",
-      "Hãy giải bài toán này mà không cần chuyển số nguyên thành chuỗi ký tự."
-    ],
+    constraints: [],
     entryFunctionName: 'isPalindrome',
     inputNames: ['x'],
     defaultCode: {
@@ -232,10 +225,7 @@ end;
         output: "false"
       }
     ],
-    constraints: [
-      "1 ≤ s.length ≤ 10⁴",
-      "Chuỗi s chỉ chứa các ký tự ngoặc '()[]{}'"
-    ],
+    constraints: [],
     entryFunctionName: 'isValid',
     inputNames: ['s'],
     defaultCode: {

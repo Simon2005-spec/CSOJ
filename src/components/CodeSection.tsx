@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { CodingProblem, SupportedLanguage } from '../types';
 import { translations } from '../locales/translations';
 import { evaluateCode } from '../lib/judge';
-import { Play, CheckSquare, Terminal, ChevronRight, CheckCircle2, Circle } from 'lucide-react';
+import { Play, CheckSquare, Terminal, ChevronRight, CheckCircle2, Circle, ZoomIn, ZoomOut, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { highlightCode } from '../utils/highlighter';
 
@@ -47,6 +47,40 @@ export default function CodeSection({
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [consoleLogs, setConsoleLogs] = useState<{ type: 'info' | 'success' | 'error' | 'stdout'; message: string }[]>([]);
+
+  const [editorFontSize, setEditorFontSize] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('csoj_editor_font_size');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 12 && parsed <= 24) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return 14;
+  });
+
+  const [isConsoleCollapsed, setIsConsoleCollapsed] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('csoj_console_collapsed');
+      return saved === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('csoj_editor_font_size', editorFontSize.toString());
+    } catch (e) {}
+  }, [editorFontSize]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('csoj_console_collapsed', isConsoleCollapsed.toString());
+    } catch (e) {}
+  }, [isConsoleCollapsed]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
@@ -323,44 +357,50 @@ export default function CodeSection({
           </div>
 
           {/* Sample Examples */}
-          <span className="examples-header">{t.testCasesLabel}</span>
-          {problem.examples.map((ex, idx) => (
-            <div className="example-box" key={idx}>
-              <div className="example-grid">
-                <div className="example-io">
-                  <span className="example-io-label">Input</span>
-                  <pre className="example-io-pre">{ex.input}</pre>
+          {problem.examples && problem.examples.length > 0 && (
+            <>
+              <span className="examples-header">{t.testCasesLabel}</span>
+              {problem.examples.map((ex, idx) => (
+                <div className="example-box" key={idx}>
+                  <div className="example-grid">
+                    <div className="example-io">
+                      <span className="example-io-label">Input</span>
+                      <pre className="example-io-pre">{ex.input}</pre>
+                    </div>
+                    <div className="example-io">
+                      <span className="example-io-label">Output</span>
+                      <pre className="example-io-pre indigo-color">{ex.output}</pre>
+                    </div>
+                  </div>
+                  {ex.explanation && (
+                    <p className="example-explanation">
+                      <strong>{t.explanationLabel}</strong> {ex.explanation}
+                    </p>
+                  )}
                 </div>
-                <div className="example-io">
-                  <span className="example-io-label">Output</span>
-                  <pre className="example-io-pre indigo-color">{ex.output}</pre>
-                </div>
-              </div>
-              {ex.explanation && (
-                <p className="example-explanation">
-                  <strong>{t.explanationLabel}</strong> {ex.explanation}
-                </p>
-              )}
-            </div>
-          ))}
+              ))}
+            </>
+          )}
 
           {/* Constraints */}
-          <div className="description-block">
-            <span className="description-block-title">{t.constraintsLabel}</span>
-            <ul className="constraints-list">
-              {problem.constraints.map((c, i) => (
-                <li key={i}>{c}</li>
-              ))}
-            </ul>
-          </div>
+          {problem.constraints && problem.constraints.length > 0 && (
+            <div className="description-block">
+              <span className="description-block-title">{t.constraintsLabel}</span>
+              <ul className="constraints-list">
+                {problem.constraints.map((c, i) => (
+                  <li key={i}>{c}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* RIGHT PANEL: Live Editor & Output Console */}
-        <div className="editor-panel">
+        <div className="editor-panel" style={{ minHeight: 0 }}>
           
           {/* Editor Header Toolbar */}
           <div className="editor-toolbar">
-            <div className="editor-lang-selector-group">
+            <div className="editor-lang-selector-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <select
                 value={selectedLang}
                 onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
@@ -370,6 +410,29 @@ export default function CodeSection({
                 <option value="python">Python 3</option>
                 <option value="pascal">Pascal</option>
               </select>
+
+              {/* Font Sizing / Zoom Controller */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'var(--bg-input)', padding: '0.125rem 0.375rem', borderRadius: '0.5rem', border: '1px solid var(--border-element)', height: '26px' }}>
+                <button
+                  onClick={() => setEditorFontSize(prev => Math.max(12, prev - 1))}
+                  className="console-clear-btn"
+                  style={{ padding: '0.125rem', minHeight: 'auto', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
+                  title="Thu nhỏ chữ (A-)"
+                >
+                  <ZoomOut size={12} />
+                </button>
+                <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-secondary)', minWidth: '2.2rem', textAlign: 'center', userSelect: 'none', fontFamily: 'var(--font-mono)' }}>
+                  {editorFontSize}px
+                </span>
+                <button
+                  onClick={() => setEditorFontSize(prev => Math.min(24, prev + 1))}
+                  className="console-clear-btn"
+                  style={{ padding: '0.125rem', minHeight: 'auto', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
+                  title="Phóng to chữ (A+)"
+                >
+                  <ZoomIn size={12} />
+                </button>
+              </div>
             </div>
 
             <div className="editor-action-group">
@@ -396,21 +459,42 @@ export default function CodeSection({
           </div>
 
           {/* Editor Textarea with line gutters */}
-          <div className="editor-textarea-container">
-            <div className="editor-gutter" ref={gutterRef}>
+          <div className="editor-textarea-container" style={{ minHeight: 0 }}>
+            <div 
+              className="editor-gutter" 
+              ref={gutterRef}
+              style={{
+                fontSize: `${Math.max(10, editorFontSize - 2)}px`,
+                paddingTop: `${Math.round(editorFontSize * 0.75)}px`,
+                paddingBottom: `${Math.round(editorFontSize * 0.75)}px`,
+              }}
+            >
               {lineNumbers.map((num) => (
-                <div key={num} className="editor-gutter-line">
+                <div 
+                  key={num} 
+                  className="editor-gutter-line"
+                  style={{
+                    height: `${Math.round(editorFontSize * 1.55)}px`,
+                    lineHeight: `${Math.round(editorFontSize * 1.55)}px`,
+                  }}
+                >
                   {num}
                 </div>
               ))}
             </div>
 
-            <div className="editor-input-area">
+            <div className="editor-input-area" style={{ minHeight: 0 }}>
               <pre 
                 ref={highlightRef} 
                 className="editor-highlight" 
                 aria-hidden="true"
                 dangerouslySetInnerHTML={{ __html: highlightCode(code, selectedLang) }}
+                style={{
+                  fontSize: `${editorFontSize}px`,
+                  lineHeight: `${Math.round(editorFontSize * 1.55)}px`,
+                  paddingTop: `${Math.round(editorFontSize * 0.75)}px`,
+                  paddingBottom: `${Math.round(editorFontSize * 0.75)}px`,
+                }}
               />
               <textarea
                 ref={textareaRef}
@@ -424,23 +508,53 @@ export default function CodeSection({
                 autoCapitalize="none"
                 autoComplete="off"
                 autoCorrect="off"
+                style={{
+                  fontSize: `${editorFontSize}px`,
+                  lineHeight: `${Math.round(editorFontSize * 1.55)}px`,
+                  paddingTop: `${Math.round(editorFontSize * 0.75)}px`,
+                  paddingBottom: `${Math.round(editorFontSize * 0.75)}px`,
+                }}
               />
             </div>
           </div>
 
           {/* Console Output Logs Panel */}
-          <div className="console-panel">
-            <div className="console-header">
-              <span className="console-title">
-                <Terminal size={11} style={{ marginRight: '0.375rem', display: 'inline-block', verticalAlign: 'middle' }} />
-                {t.consoleTitle}
+          <div 
+            className="console-panel"
+            style={{
+              height: isConsoleCollapsed ? '34px' : '180px',
+              transition: 'height 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              flexShrink: 0,
+              minHeight: 0
+            }}
+          >
+            <div 
+              className="console-header" 
+              style={{ cursor: 'pointer', userSelect: 'none' }}
+              onClick={() => setIsConsoleCollapsed(!isConsoleCollapsed)}
+            >
+              <span className="console-title" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                <Terminal size={11} />
+                <span>{t.consoleTitle}</span>
+                {isConsoleCollapsed ? <ChevronUp size={11} style={{ opacity: 0.6 }} /> : <ChevronDown size={11} style={{ opacity: 0.6 }} />}
               </span>
-              <button onClick={() => setConsoleLogs([])} className="console-clear-btn" title="Xóa logs">
-                Xóa
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
+                <button onClick={() => setConsoleLogs([])} className="console-clear-btn" title="Xóa logs">
+                  Xóa
+                </button>
+              </div>
             </div>
 
-            <div className="console-logs-container">
+            <div 
+              className="console-logs-container"
+              style={{
+                opacity: isConsoleCollapsed ? 0 : 1,
+                visibility: isConsoleCollapsed ? 'hidden' : 'visible',
+                transition: 'opacity 0.2s ease, visibility 0.2s ease',
+                flex: 1,
+                overflowY: 'auto'
+              }}
+            >
               {consoleLogs.length === 0 ? (
                 <span className="console-empty">{t.consoleEmpty}</span>
               ) : (
