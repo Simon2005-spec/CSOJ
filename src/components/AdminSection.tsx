@@ -691,7 +691,13 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
                   onChange={(e) => setTcInputStr(e.target.value)}
                   placeholder={parsedInputNames.length > 1 ? '[2, 7, 11, 15], 9' : '121'}
                   className="csoj-input"
-                  style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
+                  style={{ 
+                    fontSize: '0.8rem', 
+                    fontFamily: 'var(--font-mono)', 
+                    padding: '0.5rem 0.75rem', 
+                    fontVariantLigatures: 'none', 
+                    fontFeatureSettings: '"liga" 0, "clig" 0, "calt" 0' 
+                  }}
                 />
                 {testCases.length > 0 && (
                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
@@ -711,7 +717,13 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
                   onChange={(e) => setTcExpectedStr(e.target.value)}
                   placeholder='[0, 1] hoặc true hoặc "xyz"'
                   className="csoj-input"
-                  style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
+                  style={{ 
+                    fontSize: '0.8rem', 
+                    fontFamily: 'var(--font-mono)', 
+                    padding: '0.5rem 0.75rem', 
+                    fontVariantLigatures: 'none', 
+                    fontFeatureSettings: '"liga" 0, "clig" 0, "calt" 0' 
+                  }}
                 />
               </div>
 
@@ -840,7 +852,15 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Nhập đề bài ở định dạng Markdown hoặc sử dụng nút 'Mẫu đề thi chuẩn' ở trên để tự động điền mẫu."
                 className="csoj-input"
-                style={{ resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.875rem', lineHeight: '1.5' }}
+                style={{ 
+                  resize: 'vertical', 
+                  fontFamily: 'var(--font-mono)', 
+                  fontSize: '0.875rem', 
+                  lineHeight: '1.5',
+                  padding: '0.75rem 1rem',
+                  fontVariantLigatures: 'none',
+                  fontFeatureSettings: '"liga" 0, "clig" 0, "calt" 0'
+                }}
               />
  
               {/* Markdown Live Preview Box */}

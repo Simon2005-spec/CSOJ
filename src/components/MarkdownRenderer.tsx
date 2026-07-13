@@ -11,9 +11,13 @@ export function renderMarkdownToHtml(text: string): string {
 
   const mathBlocks: string[] = [];
   const mathInlines: string[] = [];
+  const codeBlocks: string[] = [];
+  const inlineCodes: string[] = [];
+
+  let processed = text;
 
   // 1. Extract block math: $$ ... $$
-  let processed = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
+  processed = processed.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
     const placeholder = `MATHBLOCKPLACEHOLDERXYZ${mathBlocks.length}`;
     mathBlocks.push(math.trim());
     return placeholder;
@@ -26,7 +30,42 @@ export function renderMarkdownToHtml(text: string): string {
     return placeholder;
   });
 
-  // 3. Parse Markdown with marked (it supports raw HTML by default!)
+  // 3. Extract fenced code blocks: ``` ... ```
+  processed = processed.replace(/```[\s\S]*?```/g, (match) => {
+    const placeholder = `CODEBLOCKPLACEHOLDERXYZ${codeBlocks.length}`;
+    codeBlocks.push(match);
+    return placeholder;
+  });
+
+  // 4. Extract inline code: `...`
+  processed = processed.replace(/`[^`\n]+`/g, (match) => {
+    const placeholder = `INLINECODEPLACEHOLDERXYZ${inlineCodes.length}`;
+    inlineCodes.push(match);
+    return placeholder;
+  });
+
+  // 5. Replace mathematical shorthand symbols on the remaining plain markdown text
+  // Order is important so that longer symbols don't get partially replaced by shorter ones!
+  processed = processed
+    .replaceAll('<=>', '⇔')
+    .replaceAll('<->', '↔')
+    .replaceAll('=>', '⇒')
+    .replaceAll('->', '→')
+    .replaceAll('<=', '≤')
+    .replaceAll('>=', '≥')
+    .replaceAll('<-', '←');
+
+  // 6. Restore inline code
+  inlineCodes.forEach((code, index) => {
+    processed = processed.replaceAll(`INLINECODEPLACEHOLDERXYZ${index}`, code);
+  });
+
+  // 7. Restore fenced code blocks
+  codeBlocks.forEach((code, index) => {
+    processed = processed.replaceAll(`CODEBLOCKPLACEHOLDERXYZ${index}`, code);
+  });
+
+  // 8. Parse Markdown with marked
   let html = '';
   try {
     html = marked.parse(processed, { async: false }) as string;
@@ -34,7 +73,7 @@ export function renderMarkdownToHtml(text: string): string {
     html = processed;
   }
 
-  // 4. Restore block math
+  // 9. Restore block math
   mathBlocks.forEach((math, index) => {
     try {
       const rendered = katex.renderToString(math, { displayMode: true, throwOnError: false });
@@ -44,7 +83,7 @@ export function renderMarkdownToHtml(text: string): string {
     }
   });
 
-  // 5. Restore inline math
+  // 10. Restore inline math
   mathInlines.forEach((math, index) => {
     try {
       const rendered = katex.renderToString(math, { displayMode: false, throwOnError: false });
