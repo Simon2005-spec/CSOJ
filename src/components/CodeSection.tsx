@@ -5,11 +5,7 @@ import { evaluateCode } from '../lib/judge';
 import { Play, CheckSquare, Terminal, ChevronRight, CheckCircle2, Circle, ZoomIn, ZoomOut, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { highlightCode } from '../utils/highlighter';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface CodeSectionProps {
   problems: CodingProblem[];
@@ -341,30 +337,18 @@ export default function CodeSection({
           </div>
 
           {/* Description Prose Markdown */}
-          <div className="problem-prose">
-            <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
-              {problem.descriptionHtml}
-            </Markdown>
-          </div>
+          <MarkdownRenderer className="problem-prose" content={problem.descriptionHtml} />
 
           {/* Input specification */}
           <div className="description-block">
             <span className="description-block-title">{t.inputLabel}</span>
-            <div className="description-block-text">
-              <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
-                {problem.inputFormat}
-              </Markdown>
-            </div>
+            <MarkdownRenderer className="description-block-text" content={problem.inputFormat} />
           </div>
 
           {/* Output specification */}
           <div className="description-block">
             <span className="description-block-title">{t.outputLabel}</span>
-            <div className="description-block-text">
-              <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
-                {problem.outputFormat}
-              </Markdown>
-            </div>
+            <MarkdownRenderer className="description-block-text" content={problem.outputFormat} />
           </div>
 
           {/* Sample Examples */}

@@ -15,11 +15,7 @@ import {
    Pencil
 } from 'lucide-react';
 import { CodingProblem } from '../types';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface AdminSectionProps {
   problems: CodingProblem[];
@@ -853,11 +849,11 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
                   <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#10b981', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
                     Xem trước Đề bài (Live Preview)
                   </div>
-                  <div className="problem-prose coding-desc-preview" style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.6 }}>
-                    <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
-                      {description}
-                    </Markdown>
-                  </div>
+                  <MarkdownRenderer
+                    className="problem-prose coding-desc-preview"
+                    content={description}
+                    style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.6 }}
+                  />
                 </div>
               )}
             </div>
