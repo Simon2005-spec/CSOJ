@@ -32,46 +32,28 @@ Trả về chỉ số của hai số đó dưới dạng một mảng chứa 2 p
     defaultCode: {
       python: `def two_sum(nums, target):
     """
-    Tìm indices i, j sao cho nums[i] + nums[j] == target
+    Hãy viết hàm tìm hai chỉ số i và j sao cho nums[i] + nums[j] == target và i != j.
     """
-    seen = {}
-    for i, num in enumerate(nums):
-        complement = target - num
-        if complement in seen:
-            return [seen[complement], i]
-        seen[num] = i
-    return []
+    # Viết code của bạn ở đây
+    pass
 `,
-      cpp: `vector<int> twoSum(vector<int>& nums, int target) {
-    unordered_map<int, int> seen;
-    for (int i = 0; i < nums.size(); i++) {
-        int complement = target - nums[i];
-        if (seen.count(complement)) {
-            return {seen[complement], i};
-        }
-        seen[nums[i]] = i;
-    }
+      cpp: `#include <iostream>
+#include <vector>
+#include <unordered_map>
+
+using namespace std;
+
+vector<int> twoSum(vector<int>& nums, int target) {
+    // Viết code của bạn ở đây
     return {};
 }
 `,
       pascal: `function twoSum(nums: array of integer; target: integer): array of integer;
 var
-    i, j: integer;
     res: array of integer;
 begin
-    SetLength(res, 2);
-    for i := 0 to Length(nums) - 2 do
-    begin
-        for j := i + 1 to Length(nums) - 1 do
-        begin
-            if nums[i] + nums[j] = target then
-            begin
-                res[0] := i;
-                res[1] := j;
-                exit(res);
-            end;
-        end;
-    end;
+    // Viết code của bạn ở đây
+    SetLength(res, 0);
     exit(res);
 end;
 `
@@ -121,46 +103,26 @@ Trả về \`true\` nếu \`x\` là một số đối xứng (đọc từ trái 
     defaultCode: {
       python: `def is_palindrome(x):
     """
-    Trả về True nếu x là số đối xứng, ngược lại False
+    Hãy viết hàm kiểm tra xem x có phải là số đối xứng hay không.
     """
-    if x < 0 or (x % 10 == 0 and x != 0):
-        return False
-        
-    reverted_number = 0
-    while x > reverted_number:
-        reverted_number = reverted_number * 10 + x % 10
-        x //= 10
-        
-    return x == reverted_number or x == reverted_number // 10
+    # Viết code của bạn ở đây
+    return False
 `,
-      cpp: `bool isPalindrome(int x) {
-    if (x < 0 || (x % 10 == 0 && x != 0)) {
-        return false;
-    }
-    int revertedNumber = 0;
-    while (x > revertedNumber) {
-        revertedNumber = revertedNumber * 10 + x % 10;
-        x /= 10;
-    }
-    return x == revertedNumber || x == revertedNumber / 10;
+      cpp: `#include <iostream>
+
+using namespace std;
+
+bool isPalindrome(int x) {
+    // Viết code của bạn ở đây
+    return false;
 }
 `,
       pascal: `function isPalindrome(x: integer): boolean;
 var
-    reverted, temp: integer;
+    // Khai báo biến tại đây nếu cần thiết
 begin
-    if (x < 0) or ((x mod 10 = 0) and (x <> 0)) then
-        exit(false);
-        
-    reverted := 0;
-    temp := x;
-    while temp > reverted do
-    begin
-        reverted := reverted * 10 + (temp mod 10);
-        temp := temp div 10;
-    end;
-    
-    exit((temp = reverted) or (temp = reverted div 10));
+    // Viết code của bạn ở đây
+    exit(false);
 end;
 `
     },
@@ -217,62 +179,29 @@ Một chuỗi đầu vào được coi là hợp lệ nếu:
     defaultCode: {
       python: `def is_valid(s):
     """
-    Trả về True nếu chuỗi s hợp lệ, ngược lại False
+    Hãy viết hàm xác định xem chuỗi các dấu ngoặc s có hợp lệ hay không.
     """
-    stack = []
-    mapping = {")": "(", "}": "{", "]": "["}
-    for char in s:
-        if char in mapping:
-            top_element = stack.pop() if stack else '#'
-            if mapping[char] != top_element:
-                return False
-        else:
-            stack.append(char)
-    return not stack
+    # Viết code của bạn ở đây
+    return False
 `,
-      cpp: `bool isValid(string s) {
-    stack<char> st;
-    unordered_map<char, char> mapping = {
-        {')', '('},
-        {'}', '{'},
-        {']', '['}
-    };
-    for (char c : s) {
-        if (mapping.count(c)) {
-            char top = st.empty() ? '#' : st.top();
-            if (!st.empty()) st.pop();
-            if (top != mapping[c]) return false;
-        } else {
-            st.push(c);
-        }
-    }
-    return st.empty();
+      cpp: `#include <iostream>
+#include <string>
+#include <stack>
+#include <unordered_map>
+
+using namespace std;
+
+bool isValid(string s) {
+    // Viết code của bạn ở đây
+    return false;
 }
 `,
       pascal: `function isValid(s: string): boolean;
 var
-    stack: string;
-    i: integer;
-    c, top: char;
+    // Khai báo biến tại đây nếu cần thiết
 begin
-    stack := '';
-    for i := 1 to Length(s) do
-    begin
-        c := s[i];
-        if (c = '(') or (c = '{') or (c = '[') then
-            stack := stack + c
-        else
-        begin
-            if Length(stack) = 0 then
-                exit(false);
-            top := stack[Length(stack)];
-            Delete(stack, Length(stack), 1);
-            if (c = ')') and (top <> '(') then exit(false);
-            if (c = '}') and (top <> '{') then exit(false);
-            if (c = ']') and (top <> '[') then exit(false);
-        end;
-    end;
-    exit(Length(stack) = 0);
+    // Viết code của bạn ở đây
+    exit(false);
 end;
 `
     },

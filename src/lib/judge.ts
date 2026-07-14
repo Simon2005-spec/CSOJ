@@ -4,6 +4,13 @@ export interface TestResult {
   passed: boolean;
   message: string;
   output?: any;
+  verdict?: 'AC' | 'WA' | 'TLE' | 'RTE';
+  input?: string;
+  expected?: string;
+  actual?: string;
+  stdout?: string;
+  time?: string;
+  memory?: string;
 }
 
 // -------------------------------------------------------------
@@ -539,7 +546,239 @@ export const evaluateCode = (
   const results: TestResult[] = [];
   const entryFnName = problem.entryFunctionName;
   const snakeCaseEntryFnName = entryFnName.replace(/([A-Z])/g, "_$1").toLowerCase();
-  
+
+  // 1. C++ Header & Namespace checks, and Python library import checks
+  if (lang === 'cpp') {
+    const hasBits = code.includes('#include <bits/stdc++.h>');
+    
+    // Check iostream
+    if (/\b(cin|cout|endl)\b/.test(code) && !hasBits && !code.includes('#include <iostream>')) {
+      throw new Error(language === 'vi' 
+        ? `'cin', 'cout', 'endl' chưa được khai báo trong phạm vi này (Bạn có thiếu '#include <iostream>' hoặc '#include <bits/stdc++.h>' không?)`
+        : `'cin', 'cout', 'endl' was not declared in this scope (Did you miss '#include <iostream>' or '#include <bits/stdc++.h>'?)`
+      );
+    }
+    // Check vector
+    if (/\bvector\b/.test(code) && !hasBits && !code.includes('#include <vector>')) {
+      throw new Error(language === 'vi'
+        ? `'vector' chưa được khai báo trong phạm vi này (Bạn có thiếu '#include <vector>' hoặc '#include <bits/stdc++.h>' không?)`
+        : `'vector' was not declared in this scope (Did you miss '#include <vector>' or '#include <bits/stdc++.h>'?)`
+      );
+    }
+    // Check string
+    if (/\bstring\b/.test(code) && !hasBits && !code.includes('#include <string>') && !code.includes('#include <iostream>')) {
+      throw new Error(language === 'vi'
+        ? `'string' chưa được khai báo trong phạm vi này (Bạn có thiếu '#include <string>' hoặc '#include <bits/stdc++.h>' không?)`
+        : `'string' was not declared in this scope (Did you miss '#include <string>' or '#include <bits/stdc++.h>'?)`
+      );
+    }
+    // Check algorithm
+    if (/\b(sort|reverse)\b/.test(code) && !hasBits && !code.includes('#include <algorithm>')) {
+      throw new Error(language === 'vi'
+        ? `'sort', 'reverse' chưa được khai báo trong phạm vi này (Bạn có thiếu '#include <algorithm>' hoặc '#include <bits/stdc++.h>' không?)`
+        : `'sort', 'reverse' was not declared in this scope (Did you miss '#include <algorithm>' or '#include <bits/stdc++.h>'?)`
+      );
+    }
+    // Check map/unordered_map
+    if (/\b(unordered_map|map)\b/.test(code) && !hasBits && !code.includes('#include <unordered_map>') && !code.includes('#include <map>')) {
+      throw new Error(language === 'vi'
+        ? `'map'/'unordered_map' chưa được khai báo trong phạm vi này (Bạn có thiếu '#include <map>' hoặc '#include <unordered_map>' hoặc '#include <bits/stdc++.h>' không?)`
+        : `'map' or 'unordered_map' was not declared in this scope (Did you miss '#include <map>'/'#include <unordered_map>' or '#include <bits/stdc++.h>'?)`
+      );
+    }
+    // Check stack
+    if (/\bstack\b/.test(code) && !hasBits && !code.includes('#include <stack>')) {
+      throw new Error(language === 'vi'
+        ? `'stack' chưa được khai báo trong phạm vi này (Bạn có thiếu '#include <stack>' hoặc '#include <bits/stdc++.h>' không?)`
+        : `'stack' was not declared in this scope (Did you miss '#include <stack>' or '#include <bits/stdc++.h>'?)`
+      );
+    }
+    // Check queue/priority_queue
+    if (/\b(queue|priority_queue)\b/.test(code) && !hasBits && !code.includes('#include <queue>')) {
+      throw new Error(language === 'vi'
+        ? `'queue'/'priority_queue' chưa được khai báo trong phạm vi này (Bạn có thiếu '#include <queue>' hoặc '#include <bits/stdc++.h>' không?)`
+        : `'queue'/'priority_queue' was not declared in this scope (Did you miss '#include <queue>' or '#include <bits/stdc++.h>'?)`
+      );
+    }
+    // Check set/unordered_set
+    if (/\b(unordered_set|set)\b/.test(code) && !hasBits && !code.includes('#include <unordered_set>') && !code.includes('#include <set>')) {
+      throw new Error(language === 'vi'
+        ? `'set'/'unordered_set' chưa được khai báo trong phạm vi này (Bạn có thiếu '#include <set>' hoặc '#include <unordered_set>' hoặc '#include <bits/stdc++.h>' không?)`
+        : `'set' or 'unordered_set' was not declared in this scope (Did you miss '#include <set>'/'#include <unordered_set>' or '#include <bits/stdc++.h>'?)`
+      );
+    }
+    
+    // Check using namespace std or std:: prefix
+    const hasNamespace = code.includes('using namespace std;');
+    if (!hasNamespace) {
+      const unmanaged: string[] = [];
+      if (/\b(?<!std::)(vector)\b/.test(code)) unmanaged.push('vector');
+      if (/\b(?<!std::)(string)\b/.test(code)) unmanaged.push('string');
+      if (/\b(?<!std::)(cout)\b/.test(code)) unmanaged.push('cout');
+      if (/\b(?<!std::)(cin)\b/.test(code)) unmanaged.push('cin');
+      if (/\b(?<!std::)(endl)\b/.test(code)) unmanaged.push('endl');
+      if (/\b(?<!std::)(unordered_map)\b/.test(code)) unmanaged.push('unordered_map');
+      if (/\b(?<!std::)(map)\b/.test(code)) unmanaged.push('map');
+      if (/\b(?<!std::)(stack)\b/.test(code)) unmanaged.push('stack');
+      if (/\b(?<!std::)(queue)\b/.test(code)) unmanaged.push('queue');
+      if (/\b(?<!std::)(priority_queue)\b/.test(code)) unmanaged.push('priority_queue');
+      if (/\b(?<!std::)(unordered_set)\b/.test(code)) unmanaged.push('unordered_set');
+      if (/\b(?<!std::)(set)\b/.test(code)) unmanaged.push('set');
+      
+      if (unmanaged.length > 0) {
+        throw new Error(language === 'vi'
+          ? `'${unmanaged[0]}' chưa được khai báo trong phạm vi này (Bạn có thiếu 'using namespace std;' hoặc tiền tố 'std::' không?)`
+          : `'${unmanaged[0]}' was not declared in this scope (Did you miss 'using namespace std;' or prefix 'std::'?)`
+        );
+      }
+    }
+  }
+
+  const imports: Record<string, boolean> = {
+    math: false, collections: false, deque: false, Counter: false, defaultdict: false,
+    heapq: false, heappush: false, heappop: false, heapify: false,
+    bisect: false, random: false, re: false, itertools: false, functools: false, string: false, sys: false
+  };
+
+  if (lang === 'python') {
+    // Detect math
+    if (/(\bimport\s+math\b|\bfrom\s+math\s+import\b)/.test(code)) {
+      imports.math = true;
+    } else if (/\bmath\./.test(code)) {
+      throw new Error(language === 'vi'
+        ? `NameError: name 'math' is not defined. Bạn có thiếu 'import math' không?`
+        : `NameError: name 'math' is not defined. Did you miss 'import math'?`
+      );
+    }
+    
+    // Detect collections
+    const hasCollections = /(\bimport\s+collections\b|\bfrom\s+collections\s+import\b)/.test(code);
+    if (hasCollections) {
+      imports.collections = true;
+      if (code.includes('deque')) imports.deque = true;
+      if (code.includes('Counter')) imports.Counter = true;
+      if (code.includes('defaultdict')) imports.defaultdict = true;
+    } else {
+      if (/\bcollections\./.test(code)) {
+        throw new Error(language === 'vi'
+          ? `NameError: name 'collections' is not defined. Bạn có thiếu 'import collections' không?`
+          : `NameError: name 'collections' is not defined. Did you miss 'import collections'?`
+        );
+      }
+      if (/\bdeque\b/.test(code)) {
+        throw new Error(language === 'vi'
+          ? `NameError: name 'deque' is not defined. Bạn có thiếu 'from collections import deque' không?`
+          : `NameError: name 'deque' is not defined. Did you miss 'from collections import deque'?`
+        );
+      }
+      if (/\bCounter\b/.test(code)) {
+        throw new Error(language === 'vi'
+          ? `NameError: name 'Counter' is not defined. Bạn có thiếu 'from collections import Counter' không?`
+          : `NameError: name 'Counter' is not defined. Did you miss 'from collections import Counter'?`
+        );
+      }
+      if (/\bdefaultdict\b/.test(code)) {
+        throw new Error(language === 'vi'
+          ? `NameError: name 'defaultdict' is not defined. Bạn có thiếu 'from collections import defaultdict' không?`
+          : `NameError: name 'defaultdict' is not defined. Did you miss 'from collections import defaultdict'?`
+        );
+      }
+    }
+
+    // Detect heapq
+    const hasHeapq = /(\bimport\s+heapq\b|\bfrom\s+heapq\s+import\b)/.test(code);
+    if (hasHeapq) {
+      imports.heapq = true;
+      imports.heappush = true;
+      imports.heappop = true;
+      imports.heapify = true;
+    } else {
+      if (/\bheapq\./.test(code)) {
+        throw new Error(language === 'vi'
+          ? `NameError: name 'heapq' is not defined. Bạn có thiếu 'import heapq' không?`
+          : `NameError: name 'heapq' is not defined. Did you miss 'import heapq'?`
+        );
+      }
+      if (/\b(heappush|heappop|heapify)\b/.test(code)) {
+        const hName = code.includes('heappush') ? 'heappush' : code.includes('heappop') ? 'heappop' : 'heapify';
+        throw new Error(language === 'vi'
+          ? `NameError: name '${hName}' is not defined. Bạn có thiếu 'from heapq import ...' không?`
+          : `NameError: name '${hName}' is not defined. Did you miss 'from heapq import ...'?`
+        );
+      }
+    }
+
+    // Detect bisect
+    if (/(\bimport\s+bisect\b|\bfrom\s+bisect\s+import\b)/.test(code)) {
+      imports.bisect = true;
+    } else if (/\bbisect\./.test(code) || /\b(bisect_left|bisect_right)\b/.test(code)) {
+      throw new Error(language === 'vi'
+        ? `NameError: name 'bisect' is not defined. Bạn có thiếu 'import bisect' không?`
+        : `NameError: name 'bisect' is not defined. Did you miss 'import bisect'?`
+      );
+    }
+
+    // Detect random
+    if (/(\bimport\s+random\b|\bfrom\s+random\s+import\b)/.test(code)) {
+      imports.random = true;
+    } else if (/\brandom\./.test(code) || /\b(randint|choice|shuffle)\b/.test(code)) {
+      throw new Error(language === 'vi'
+        ? `NameError: name 'random' is not defined. Bạn có thiếu 'import random' không?`
+        : `NameError: name 'random' is not defined. Did you miss 'import random'?`
+      );
+    }
+
+    // Detect re
+    if (/(\bimport\s+re\b|\bfrom\s+re\s+import\b)/.test(code)) {
+      imports.re = true;
+    } else if (/\bre\./.test(code)) {
+      throw new Error(language === 'vi'
+        ? `NameError: name 're' is not defined. Bạn có thiếu 'import re' không?`
+        : `NameError: name 're' is not defined. Did you miss 'import re'?`
+      );
+    }
+
+    // Detect itertools
+    if (/(\bimport\s+itertools\b|\bfrom\s+itertools\s+import\b)/.test(code)) {
+      imports.itertools = true;
+    } else if (/\bitertools\./.test(code) || /\b(combinations|permutations)\b/.test(code)) {
+      throw new Error(language === 'vi'
+        ? `NameError: name 'itertools' is not defined. Bạn có thiếu 'import itertools' không?`
+        : `NameError: name 'itertools' is not defined. Did you miss 'import itertools'?`
+      );
+    }
+
+    // Detect functools
+    if (/(\bimport\s+functools\b|\bfrom\s+functools\s+import\b)/.test(code)) {
+      imports.functools = true;
+    } else if (/\bfunctools\./.test(code) || /\b(lru_cache|cache|reduce)\b/.test(code)) {
+      throw new Error(language === 'vi'
+        ? `NameError: name 'functools' is not defined. Bạn có thiếu 'import functools' không?`
+        : `NameError: name 'functools' is not defined. Did you miss 'import functools'?`
+      );
+    }
+
+    // Detect string
+    if (/(\bimport\s+string\b)/.test(code)) {
+      imports.string = true;
+    } else if (/\bstring\./.test(code)) {
+      throw new Error(language === 'vi'
+        ? `NameError: name 'string' is not defined. Bạn có thiếu 'import string' không?`
+        : `NameError: name 'string' is not defined. Did you miss 'import string'?`
+      );
+    }
+
+    // Detect sys
+    if (/(\bimport\s+sys\b|\bfrom\s+sys\s+import\b)/.test(code)) {
+      imports.sys = true;
+    } else if (/\bsys\./.test(code)) {
+      throw new Error(language === 'vi'
+        ? `NameError: name 'sys' is not defined. Bạn có thiếu 'import sys' không?`
+        : `NameError: name 'sys' is not defined. Did you miss 'import sys'?`
+      );
+    }
+  }
+
   let jsCode = '';
   if (lang === 'python') {
     jsCode = transpilePythonToJS(code, entryFnName);
@@ -654,37 +893,37 @@ export const evaluateCode = (
             return x;
           }
 
-          // Injected Python & C++ Standard Libraries & Mathematical Polyfills
-          const pi = Math.PI;
-          const e = Math.E;
-          const inf = Infinity;
-          const nan = NaN;
-          const sqrt = Math.sqrt;
-          const isqrt = (n) => Math.floor(Math.sqrt(Number(n)));
-          const pow = Math.pow;
-          const ceil = Math.ceil;
-          const floor = Math.floor;
-          const fabs = Math.abs;
-          const abs = Math.abs;
-          const log = Math.log;
-          const log2 = Math.log2;
-          const log10 = Math.log10;
-          const sin = Math.sin;
-          const cos = Math.cos;
-          const tan = Math.tan;
-          const asin = Math.asin;
-          const acos = Math.acos;
-          const atan = Math.atan;
-          const radians = (deg) => deg * Math.PI / 180;
-          const degrees = (rad) => rad * 180 / Math.PI;
+          // Internal raw implementations
+          const pi_raw = Math.PI;
+          const e_raw = Math.E;
+          const inf_raw = Infinity;
+          const nan_raw = NaN;
+          const sqrt_raw = Math.sqrt;
+          const isqrt_raw = (n) => Math.floor(Math.sqrt(Number(n)));
+          const pow_raw = Math.pow;
+          const ceil_raw = Math.ceil;
+          const floor_raw = Math.floor;
+          const fabs_raw = Math.abs;
+          const abs_raw = Math.abs;
+          const log_raw = Math.log;
+          const log2_raw = Math.log2;
+          const log10_raw = Math.log10;
+          const sin_raw = Math.sin;
+          const cos_raw = Math.cos;
+          const tan_raw = Math.tan;
+          const asin_raw = Math.asin;
+          const acos_raw = Math.acos;
+          const atan_raw = Math.atan;
+          const radians_raw = (deg) => deg * Math.PI / 180;
+          const degrees_raw = (rad) => rad * 180 / Math.PI;
 
-          const factorial = (n) => {
+          const factorial_raw = (n) => {
             let res = 1;
             for (let i = 2; i <= n; i++) res *= i;
             return res;
           };
 
-          const gcd = (a, b) => {
+          const gcd_raw = (a, b) => {
             a = Math.abs(a);
             b = Math.abs(b);
             while (b) {
@@ -695,7 +934,7 @@ export const evaluateCode = (
             return a;
           };
 
-          const comb = (n, k) => {
+          const comb_raw = (n, k) => {
             if (k < 0 || k > n) return 0;
             if (k === 0 || k === n) return 1;
             if (k > n / 2) k = n - k;
@@ -706,7 +945,7 @@ export const evaluateCode = (
             return Math.round(res);
           };
 
-          const perm = (n, k = null) => {
+          const perm_raw = (n, k = null) => {
             if (k === null) k = n;
             if (k < 0 || k > n) return 0;
             let res = 1;
@@ -714,14 +953,9 @@ export const evaluateCode = (
             return res;
           };
 
-          const prod = (arr) => Array.isArray(arr) ? arr.reduce((a, b) => a * b, 1) : 1;
+          const prod_raw = (arr) => Array.isArray(arr) ? arr.reduce((a, b) => a * b, 1) : 1;
 
-          const math = {
-            pi, e, inf, nan, sqrt, isqrt, pow, ceil, floor, fabs, abs, factorial, gcd, comb, perm, log, log2, log10, sin, cos, tan, asin, acos, atan, radians, degrees, prod
-          };
-
-          // deque, Counter, defaultdict, collections
-          class deque extends Array {
+          class deque_raw extends Array {
             constructor(iterable = []) {
               super();
               if (iterable) {
@@ -735,7 +969,7 @@ export const evaluateCode = (
             extendleft(iterable) { for (let x of iterable) this.unshift(x); }
           }
 
-          class Counter extends Map {
+          class Counter_raw extends Map {
             constructor(iterable = []) {
               super();
               if (iterable) {
@@ -774,7 +1008,7 @@ export const evaluateCode = (
             }
           }
 
-          class defaultdict {
+          class defaultdict_raw {
             constructor(defaultFactory) {
               this.map = new Map();
               this.defaultFactory = defaultFactory;
@@ -823,10 +1057,7 @@ export const evaluateCode = (
             get length() { return this.map.size; }
           }
 
-          const collections = { deque, Counter, defaultdict };
-
-          // heapq
-          const heappush = (heap, item) => {
+          const heappush_raw = (heap, item) => {
             heap.push(item);
             let idx = heap.length - 1;
             while (idx > 0) {
@@ -842,7 +1073,7 @@ export const evaluateCode = (
             }
           };
 
-          const heappop = (heap) => {
+          const heappop_raw = (heap) => {
             if (heap.length === 0) return undefined;
             const res = heap[0];
             const last = heap.pop();
@@ -868,18 +1099,15 @@ export const evaluateCode = (
             return res;
           };
 
-          const heapify = (heap) => {
+          const heapify_raw = (heap) => {
             const temp = [...heap];
             heap.length = 0;
             for (const item of temp) {
-              heappush(heap, item);
+              heappush_raw(heap, item);
             }
           };
 
-          const heapq = { heappush, heappop, heapify };
-
-          // bisect
-          const bisect_left = (a, x, lo = 0, hi = null) => {
+          const bisect_left_raw = (a, x, lo = 0, hi = null) => {
             if (hi === null) hi = a.length;
             while (lo < hi) {
               let mid = Math.floor((lo + hi) / 2);
@@ -889,7 +1117,7 @@ export const evaluateCode = (
             return lo;
           };
 
-          const bisect_right = (a, x, lo = 0, hi = null) => {
+          const bisect_right_raw = (a, x, lo = 0, hi = null) => {
             if (hi === null) hi = a.length;
             while (lo < hi) {
               let mid = Math.floor((lo + hi) / 2);
@@ -899,16 +1127,7 @@ export const evaluateCode = (
             return lo;
           };
 
-          const bisect_fun = bisect_right;
-          const bisect = Object.assign(bisect_fun, {
-            bisect_left,
-            bisect_right,
-            bisect: bisect_fun
-          });
-          const bisect_module = bisect;
-
-          // random module
-          const random = {
+          const random_raw = {
             random: () => Math.random(),
             randint: (a, b) => Math.floor(Math.random() * (b - a + 1)) + a,
             choice: (arr) => arr[Math.floor(Math.random() * arr.length)],
@@ -923,8 +1142,7 @@ export const evaluateCode = (
             }
           };
 
-          // re module
-          const re = {
+          const re_raw = {
             search: (pattern, string) => {
               const flags = pattern.startsWith('(?i)') ? 'i' : '';
               const pat = pattern.startsWith('(?i)') ? pattern.slice(4) : pattern;
@@ -952,8 +1170,7 @@ export const evaluateCode = (
             }
           };
 
-          // time module
-          const time = {
+          const time_raw = {
             time: () => Date.now() / 1000,
             sleep: (secs) => {
               const start = Date.now();
@@ -961,8 +1178,7 @@ export const evaluateCode = (
             }
           };
 
-          // datetime module
-          const datetime = {
+          const datetime_raw = {
             datetime: {
               now: () => {
                 const d = new Date();
@@ -979,7 +1195,91 @@ export const evaluateCode = (
             }
           };
 
-          // PriorityQueue polyfill class
+          const sys_raw = {
+            setrecursionlimit: (limit) => {},
+            stdin: {
+              read: () => {
+                const remainingLines = _stdin_lines.slice(_stdin_line_ptr);
+                _stdin_line_ptr = _stdin_lines.length;
+                return remainingLines.join('\\n');
+              },
+              readline: () => {
+                return input();
+              }
+            }
+          };
+
+          const combinations_raw = (iterable, r) => {
+            const pool = Array.from(iterable);
+            const n = pool.length;
+            if (r > n) return [];
+            const indices = Array.from({length: r}, (_, i) => i);
+            const result = [indices.map(i => pool[i])];
+            while (true) {
+              let i;
+              for (i = r - 1; i >= 0; i--) {
+                if (indices[i] !== i + n - r) break;
+              }
+              if (i < 0) return result;
+              indices[i] += 1;
+              for (let j = i + 1; j < r; j++) {
+                indices[j] = indices[j - 1] + 1;
+              }
+              result.push(indices.map(idx => pool[idx]));
+            }
+          };
+
+          const permutations_raw = (iterable, r = null) => {
+            const pool = Array.from(iterable);
+            const n = pool.length;
+            if (r === null) r = n;
+            if (r > n) return [];
+            const results = [];
+            const used = new Array(n).fill(false);
+            const path = [];
+            const backtrack = () => {
+              if (path.length === r) {
+                results.push([...path]);
+                return;
+              }
+              for (let i = 0; i < n; i++) {
+                if (!used[i]) {
+                  used[i] = true;
+                  path.push(pool[i]);
+                  backtrack();
+                  path.pop();
+                  used[i] = false;
+                }
+              }
+            };
+            backtrack();
+            return results;
+          };
+
+          const itertools_raw = { combinations: combinations_raw, permutations: permutations_raw };
+
+          const lru_cache_raw = (maxsize) => (fn) => fn;
+          const cache_raw = (fn) => fn;
+          const reduce_raw = (fn, arr, init) => arr.reduce(fn, init);
+          const functools_raw = { lru_cache: lru_cache_raw, cache: cache_raw, reduce: reduce_raw };
+
+          const ascii_lowercase_raw = 'abcdefghijklmnopqrstuvwxyz';
+          const ascii_uppercase_raw = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+          const ascii_letters_raw = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+          const digits_raw = '0123456789';
+          const hexdigits_raw = '0123456789abcdefABCDEF';
+          const octdigits_raw = '01234567';
+          const punctuation_raw = "!" + '"' + "#$%&'()*+,-./:;<=>?@[" + String.fromCharCode(92) + "]" + "^" + String.fromCharCode(96) + "{|}~";
+          const printable_raw = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!" + '"' + "#$%&'()*+,-./:;<=>?@[" + String.fromCharCode(92) + "]" + "^" + String.fromCharCode(96) + "{|}~ \t\n\r\x0b\x0c";
+          const whitespace_raw = ' \t\n\r\x0b\x0c';
+
+          const string_raw = {
+            ascii_lowercase: ascii_lowercase_raw, ascii_uppercase: ascii_uppercase_raw, ascii_letters: ascii_letters_raw,
+            digits: digits_raw, hexdigits: hexdigits_raw, octdigits: octdigits_raw, punctuation: punctuation_raw,
+            printable: printable_raw, whitespace: whitespace_raw
+          };
+
+          // PriorityQueue is still global or accessible for C++ PriorityQueue uses
           class PriorityQueue {
             constructor(comparator = (a, b) => b - a) {
               this.heap = [];
@@ -1041,7 +1341,7 @@ export const evaluateCode = (
             }
           }
 
-          // C++ and other language polyfills
+          // C++ global items
           const make_pair = (a, b) => [a, b];
           const M_PI = Math.PI;
 
@@ -1066,91 +1366,62 @@ export const evaluateCode = (
             return container[key] !== undefined;
           };
 
-          // sys
-          const sys = {
-            setrecursionlimit: (limit) => {},
-            stdin: {
-              read: () => {
-                const remainingLines = _stdin_lines.slice(_stdin_line_ptr);
-                _stdin_line_ptr = _stdin_lines.length;
-                return remainingLines.join('\\n');
-              },
-              readline: () => {
-                return input();
-              }
-            }
-          };
+          // -------------------------------------------------------------
+          // Expose standard variables conditionally based on runContext.imports
+          // -------------------------------------------------------------
+          const math = runContext.imports.math ? {
+            pi: pi_raw, e: e_raw, inf: inf_raw, nan: nan_raw, sqrt: sqrt_raw, isqrt: isqrt_raw, pow: pow_raw,
+            ceil: ceil_raw, floor: floor_raw, fabs: fabs_raw, abs: abs_raw, factorial: factorial_raw, gcd: gcd_raw,
+            comb: comb_raw, perm: perm_raw, log: log_raw, log2: log2_raw, log10: log10_raw, sin: sin_raw, cos: cos_raw,
+            tan: tan_raw, asin: asin_raw, acos: acos_raw, atan: atan_raw, radians: radians_raw, degrees: degrees_raw, prod: prod_raw
+          } : undefined;
 
-          // itertools
-          const combinations = (iterable, r) => {
-            const pool = Array.from(iterable);
-            const n = pool.length;
-            if (r > n) return [];
-            const indices = Array.from({length: r}, (_, i) => i);
-            const result = [indices.map(i => pool[i])];
-            while (true) {
-              let i;
-              for (i = r - 1; i >= 0; i--) {
-                if (indices[i] !== i + n - r) break;
-              }
-              if (i < 0) return result;
-              indices[i] += 1;
-              for (let j = i + 1; j < r; j++) {
-                indices[j] = indices[j - 1] + 1;
-              }
-              result.push(indices.map(idx => pool[idx]));
-            }
-          };
+          // Expose direct functions if math is imported
+          const pi = runContext.imports.math ? pi_raw : undefined;
+          const e = runContext.imports.math ? e_raw : undefined;
+          const inf = runContext.imports.math ? inf_raw : undefined;
+          const nan = runContext.imports.math ? nan_raw : undefined;
+          const sqrt = runContext.imports.math ? sqrt_raw : undefined;
+          const isqrt = runContext.imports.math ? isqrt_raw : undefined;
+          const pow = runContext.imports.math ? pow_raw : undefined;
+          const ceil = runContext.imports.math ? ceil_raw : undefined;
+          const floor = runContext.imports.math ? floor_raw : undefined;
+          const fabs = runContext.imports.math ? fabs_raw : undefined;
+          const abs = runContext.imports.math ? abs_raw : undefined;
+          const factorial = runContext.imports.math ? factorial_raw : undefined;
+          const gcd = runContext.imports.math ? gcd_raw : undefined;
+          const comb = runContext.imports.math ? comb_raw : undefined;
+          const perm = runContext.imports.math ? perm_raw : undefined;
 
-          const permutations = (iterable, r = null) => {
-            const pool = Array.from(iterable);
-            const n = pool.length;
-            if (r === null) r = n;
-            if (r > n) return [];
-            const results = [];
-            const used = new Array(n).fill(false);
-            const path = [];
-            const backtrack = () => {
-              if (path.length === r) {
-                results.push([...path]);
-                return;
-              }
-              for (let i = 0; i < n; i++) {
-                if (!used[i]) {
-                  used[i] = true;
-                  path.push(pool[i]);
-                  backtrack();
-                  path.pop();
-                  used[i] = false;
-                }
-              }
-            };
-            backtrack();
-            return results;
-          };
+          const deque = runContext.imports.deque ? deque_raw : undefined;
+          const Counter = runContext.imports.Counter ? Counter_raw : undefined;
+          const defaultdict = runContext.imports.defaultdict ? defaultdict_raw : undefined;
+          const collections = runContext.imports.collections ? { deque: deque_raw, Counter: Counter_raw, defaultdict: defaultdict_raw } : undefined;
 
-          const itertools = { combinations, permutations };
+          const heappush = runContext.imports.heappush ? heappush_raw : undefined;
+          const heappop = runContext.imports.heappop ? heappop_raw : undefined;
+          const heapify = runContext.imports.heapify ? heapify_raw : undefined;
+          const heapq = runContext.imports.heapq ? { heappush: heappush_raw, heappop: heappop_raw, heapify: heapify_raw } : undefined;
 
-          // functools
-          const lru_cache = (maxsize) => (fn) => fn;
-          const cache = (fn) => fn;
-          const reduce = (fn, arr, init) => arr.reduce(fn, init);
-          const functools = { lru_cache, cache, reduce };
+          const bisect_left = runContext.imports.bisect ? bisect_left_raw : undefined;
+          const bisect_right = runContext.imports.bisect ? bisect_right_raw : undefined;
+          const bisect = runContext.imports.bisect ? Object.assign(bisect_right_raw, {
+            bisect_left: bisect_left_raw, bisect_right: bisect_right_raw, bisect: bisect_right_raw
+          }) : undefined;
 
-          // string
-          const ascii_lowercase = 'abcdefghijklmnopqrstuvwxyz';
-          const ascii_uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-          const ascii_letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-          const digits = '0123456789';
-          const hexdigits = '0123456789abcdefABCDEF';
-          const octdigits = '01234567';
-          const punctuation = "!" + '"' + "#$%&'()*+,-./:;<=>?@[" + String.fromCharCode(92) + "]" + "^" + String.fromCharCode(96) + "{|}~";
-          const printable = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!" + '"' + "#$%&'()*+,-./:;<=>?@[" + String.fromCharCode(92) + "]" + "^" + String.fromCharCode(96) + "{|}~ \t\n\r\x0b\x0c";
-          const whitespace = ' \t\n\r\x0b\x0c';
-
-          const string = {
-            ascii_lowercase, ascii_uppercase, ascii_letters, digits, hexdigits, octdigits, punctuation, printable, whitespace
-          };
+          const random = runContext.imports.random ? random_raw : undefined;
+          const re = runContext.imports.re ? re_raw : undefined;
+          const time = runContext.imports.time ? time_raw : undefined;
+          const datetime = runContext.imports.datetime ? datetime_raw : undefined;
+          const sys = runContext.imports.sys ? sys_raw : undefined;
+          const itertools = runContext.imports.itertools ? itertools_raw : undefined;
+          const combinations = runContext.imports.itertools ? combinations_raw : undefined;
+          const permutations = runContext.imports.itertools ? permutations_raw : undefined;
+          const functools = runContext.imports.functools ? functools_raw : undefined;
+          const lru_cache = runContext.imports.functools ? lru_cache_raw : undefined;
+          const cache = runContext.imports.functools ? cache_raw : undefined;
+          const reduce = runContext.imports.functools ? reduce_raw : undefined;
+          const string = runContext.imports.string ? string_raw : undefined;
 
           // Basic Python helpers
           const len = (x) => (x !== null && x !== undefined) ? (x.length !== undefined ? x.length : (x.size !== undefined ? x.size : 0)) : 0;
@@ -1233,7 +1504,7 @@ export const evaluateCode = (
         );
 
         const startTime = performance.now();
-        const runResult = wrapperFn({ rawStdin: rawStdin, args: Array.isArray(tc.input) ? tc.input : [tc.input] });
+        const runResult = wrapperFn({ rawStdin: rawStdin, args: Array.isArray(tc.input) ? tc.input : [tc.input], imports: imports });
         duration = performance.now() - startTime;
         
         output = runResult.retVal;
@@ -1299,7 +1570,14 @@ export const evaluateCode = (
       results.push({
         passed,
         output: stdoutStr.trim() !== '' ? stdoutStr : output,
-        message: `${header}\n${subheader}\n${footer}`
+        message: `${header}\n${subheader}\n${footer}`,
+        verdict,
+        input: tc.rawInput || rawStdin,
+        expected: Array.isArray(tc.expected) ? tc.expected.join(' ') : String(tc.expected),
+        actual: stdoutStr.trim() !== '' ? stdoutStr.trim() : (output !== undefined && output !== null ? (typeof output === 'object' ? JSON.stringify(output) : String(output)) : ''),
+        stdout: stdoutStr,
+        time: timeStr,
+        memory: memStr
       });
     }
 

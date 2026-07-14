@@ -49,6 +49,12 @@ export default function CodeSection({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [consoleLogs, setConsoleLogs] = useState<{ type: 'info' | 'success' | 'error' | 'stdout'; message: string }[]>([]);
 
+  // LeetCode Console States
+  const [lastResults, setLastResults] = useState<any[] | null>(null);
+  const [activeConsoleTab, setActiveConsoleTab] = useState<'testcase' | 'result'>('testcase');
+  const [selectedTestcaseIdx, setSelectedTestcaseIdx] = useState<number>(0);
+  const [compileError, setCompileError] = useState<string | null>(null);
+
   const [editorFontSize, setEditorFontSize] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('csoj_editor_font_size');
@@ -251,29 +257,20 @@ export default function CodeSection({
     syncCodeToParent(latestCodeRef.current, selectedLang);
 
     setIsRunning(true);
-    setConsoleLogs([{ type: 'info', message: t.initRunner }]);
+    setIsConsoleCollapsed(false);
+    setActiveConsoleTab('result');
+    setCompileError(null);
+    setLastResults(null);
+    setSelectedTestcaseIdx(0);
 
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    // Short simulated delay to feel like a real compile/run environment
+    await new Promise((resolve) => setTimeout(resolve, 1200));
 
     try {
-      const displayLangName = selectedLang === 'cpp' ? 'C++ 17' : selectedLang === 'python' ? 'Python 3' : 'Pascal';
-      setConsoleLogs((prev) => [...prev, { type: 'info', message: t.compilingMsg.replace('{lang}', displayLangName) }]);
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
       const results = evaluateCode(latestCodeRef.current, selectedLang, problem, language);
       const allPassed = results.every(r => r.passed);
 
-      setConsoleLogs((prev) => [
-        ...prev,
-        ...results.map((r) => ({
-          type: (r.passed ? 'stdout' : 'error') as any,
-          message: r.message
-        })),
-        {
-          type: allPassed ? 'success' : 'error',
-          message: allPassed ? t.allPassedMsg : t.incorrectLogicMsg
-        }
-      ]);
+      setLastResults(results);
 
       setCodingAnswers((prev) => {
         const prevProblem = prev[problem.id] || {};
@@ -292,7 +289,7 @@ export default function CodeSection({
         };
       });
     } catch (err: any) {
-      setConsoleLogs((prev) => [...prev, { type: 'error', message: err.message }]);
+      setCompileError(err.message);
     }
     setIsRunning(false);
   };
@@ -300,8 +297,6 @@ export default function CodeSection({
   const submitCode = async () => {
     if (!problem) return;
     setIsSubmitting(true);
-    setConsoleLogs((prev) => [...prev, { type: 'info', message: t.submittingToJudge }]);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
     await runCode();
     setIsSubmitting(false);
   };
@@ -513,51 +508,343 @@ export default function CodeSection({
             </div>
           </div>
 
-          {/* Console Output Logs Panel */}
+          {/* LeetCode style Console Panel */}
           <div 
             className="console-panel"
             style={{
-              height: isConsoleCollapsed ? '34px' : '180px',
+              height: isConsoleCollapsed ? '36px' : '280px',
               transition: 'height 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
               flexShrink: 0,
-              minHeight: 0
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
-            <div 
-              className="console-header" 
-              style={{ cursor: 'pointer', userSelect: 'none' }}
-              onClick={() => setIsConsoleCollapsed(!isConsoleCollapsed)}
-            >
-              <span className="console-title" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                <Terminal size={11} />
-                <span>{t.consoleTitle}</span>
-                {isConsoleCollapsed ? <ChevronUp size={11} style={{ opacity: 0.6 }} /> : <ChevronDown size={11} style={{ opacity: 0.6 }} />}
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
-                <button onClick={() => setConsoleLogs([])} className="console-clear-btn" title="Xóa logs">
-                  Xóa
+            {/* Header */}
+            <div className="console-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', height: '36px', borderBottom: '1px solid var(--border-element)', background: 'var(--bg-editor-toolbar)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', height: '100%' }}>
+                <button 
+                  onClick={() => setIsConsoleCollapsed(!isConsoleCollapsed)}
+                  className="console-collapse-toggle-btn"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, padding: 0 }}
+                >
+                  <Terminal size={12} style={{ color: '#3b82f6' }} />
+                  <span>Console</span>
+                  {isConsoleCollapsed ? <ChevronUp size={12} style={{ opacity: 0.6 }} /> : <ChevronDown size={12} style={{ opacity: 0.6 }} />}
                 </button>
+
+                {!isConsoleCollapsed && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '100%' }}>
+                    <button
+                      onClick={() => setActiveConsoleTab('testcase')}
+                      style={{
+                        height: '100%',
+                        padding: '0 0.5rem',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: activeConsoleTab === 'testcase' ? '2px solid #3b82f6' : '2px solid transparent',
+                        color: activeConsoleTab === 'testcase' ? 'var(--text-primary)' : 'var(--text-muted)',
+                        fontWeight: activeConsoleTab === 'testcase' ? 600 : 400,
+                        fontSize: '0.725rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      {language === 'vi' ? 'Bộ test mẫu' : 'Testcase'}
+                    </button>
+                    <button
+                      onClick={() => setActiveConsoleTab('result')}
+                      style={{
+                        height: '100%',
+                        padding: '0 0.5rem',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: activeConsoleTab === 'result' ? '2px solid #3b82f6' : '2px solid transparent',
+                        color: activeConsoleTab === 'result' ? 'var(--text-primary)' : 'var(--text-muted)',
+                        fontWeight: activeConsoleTab === 'result' ? 600 : 400,
+                        fontSize: '0.725rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      {language === 'vi' ? 'Kết quả chạy' : 'Result'}
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {!isConsoleCollapsed && lastResults && (
+                <button 
+                  onClick={() => {
+                    setLastResults(null);
+                    setCompileError(null);
+                    setActiveConsoleTab('testcase');
+                  }} 
+                  className="console-clear-btn" 
+                  style={{ fontSize: '0.6875rem', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}
+                >
+                  {language === 'vi' ? 'Xóa kết quả' : 'Clear results'}
+                </button>
+              )}
             </div>
 
+            {/* Console Content */}
             <div 
-              className="console-logs-container"
+              className="console-body"
               style={{
-                opacity: isConsoleCollapsed ? 0 : 1,
-                visibility: isConsoleCollapsed ? 'hidden' : 'visible',
-                transition: 'opacity 0.2s ease, visibility 0.2s ease',
+                display: isConsoleCollapsed ? 'none' : 'flex',
+                flexDirection: 'column',
                 flex: 1,
-                overflowY: 'auto'
+                overflowY: 'auto',
+                background: 'var(--bg-console)',
+                padding: '1rem',
+                fontFamily: 'var(--font-sans)',
+                fontSize: '0.75rem',
+                gap: '0.75rem'
               }}
             >
-              {consoleLogs.length === 0 ? (
-                <span className="console-empty">{t.consoleEmpty}</span>
-              ) : (
-                consoleLogs.map((log, index) => (
-                  <div key={index} className={`console-log-row log-${log.type}`}>
-                    {log.message}
+              {/* Tab 1: Testcase */}
+              {activeConsoleTab === 'testcase' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {/* Testcase selectors */}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {problem.testCases.map((tc, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedTestcaseIdx(idx)}
+                        style={{
+                          padding: '0.375rem 0.75rem',
+                          borderRadius: '0.375rem',
+                          fontSize: '0.6875rem',
+                          fontWeight: selectedTestcaseIdx === idx ? 600 : 400,
+                          background: selectedTestcaseIdx === idx ? 'var(--bg-hover)' : 'rgba(255, 255, 255, 0.02)',
+                          border: selectedTestcaseIdx === idx ? '1px solid var(--border-element)' : '1px solid transparent',
+                          color: selectedTestcaseIdx === idx ? 'var(--text-primary)' : 'var(--text-muted)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Case {idx + 1}
+                      </button>
+                    ))}
                   </div>
-                ))
+
+                  {/* Selected case details */}
+                  {problem.testCases[selectedTestcaseIdx] && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {/* Display arguments/inputs nicely */}
+                      <div>
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', fontWeight: 600 }}>
+                          {language === 'vi' ? 'Dữ liệu đầu vào (Input):' : 'Input:'}
+                        </div>
+                        <pre style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: '0.375rem',
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '0.6875rem',
+                          color: 'var(--text-primary)',
+                          whiteSpace: 'pre-wrap',
+                          border: '1px solid rgba(255,255,255,0.05)'
+                        }}>
+                          {problem.testCases[selectedTestcaseIdx].rawInput || problem.testCases[selectedTestcaseIdx].input.join('\n')}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', fontWeight: 600 }}>
+                          {language === 'vi' ? 'Kết quả kỳ vọng (Expected Output):' : 'Expected Output:'}
+                        </div>
+                        <pre style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: '0.375rem',
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '0.6875rem',
+                          color: 'var(--text-primary)',
+                          whiteSpace: 'pre-wrap',
+                          border: '1px solid rgba(255,255,255,0.05)'
+                        }}>
+                          {Array.isArray(problem.testCases[selectedTestcaseIdx].expected) 
+                            ? problem.testCases[selectedTestcaseIdx].expected.join(' ') 
+                            : String(problem.testCases[selectedTestcaseIdx].expected)}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tab 2: Result */}
+              {activeConsoleTab === 'result' && (
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  {isRunning ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '2rem 0', gap: '0.75rem' }}>
+                      <div className="status-indicator-dot animate-pulse" style={{ width: '12px', height: '12px', background: '#3b82f6' }} />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {language === 'vi' ? 'Đang thực thi các bộ test...' : 'Running test cases...'}
+                      </span>
+                    </div>
+                  ) : compileError ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#ef4444' }}>
+                        {language === 'vi' ? 'Lỗi Biên Dịch / Lỗi Thực Thi (Error):' : 'Compilation / Runtime Error:'}
+                      </div>
+                      <pre style={{
+                        background: 'rgba(239, 68, 68, 0.05)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        padding: '0.75rem',
+                        borderRadius: '0.375rem',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.6875rem',
+                        color: '#fca5a5',
+                        whiteSpace: 'pre-wrap',
+                        maxHeight: '180px',
+                        overflowY: 'auto'
+                      }}>
+                        {compileError}
+                      </pre>
+                    </div>
+                  ) : lastResults ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {/* Status Verdict */}
+                      {(() => {
+                        const allPassed = lastResults.every(r => r.passed);
+                        const passedCount = lastResults.filter(r => r.passed).length;
+                        const totalCount = lastResults.length;
+                        const verdictColor = allPassed ? '#2cbb5d' : '#ef4743';
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem' }}>
+                            <span style={{ fontSize: '1rem', fontWeight: 700, color: verdictColor }}>
+                              {allPassed ? (language === 'vi' ? 'Đã Chấp Nhận (Accepted)' : 'Accepted') : (language === 'vi' ? 'Sai Đáp Án (Wrong Answer)' : 'Wrong Answer')}
+                            </span>
+                            <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+                              {language === 'vi' ? `Vượt qua: ${passedCount}/${totalCount} bộ test` : `Passed: ${passedCount}/${totalCount} test cases`}
+                            </span>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Testcase selector row with pass/fail indicator */}
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {lastResults.map((res, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setSelectedTestcaseIdx(idx)}
+                            style={{
+                              padding: '0.375rem 0.75rem',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.6875rem',
+                              fontWeight: selectedTestcaseIdx === idx ? 600 : 400,
+                              background: selectedTestcaseIdx === idx ? 'var(--bg-hover)' : 'rgba(255, 255, 255, 0.02)',
+                              border: selectedTestcaseIdx === idx ? `1px solid ${res.passed ? '#10b981' : '#ef4444'}` : '1px solid transparent',
+                              color: res.passed ? '#10b981' : '#f87171',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}
+                          >
+                            <span style={{
+                              width: '5px',
+                              height: '5px',
+                              borderRadius: '50%',
+                              background: res.passed ? '#10b981' : '#ef4444'
+                            }} />
+                            Case {idx + 1}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Show the selected run case result details */}
+                      {lastResults[selectedTestcaseIdx] && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+                            <div>⏱️ {language === 'vi' ? 'Thời gian chạy:' : 'Runtime:'} <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{lastResults[selectedTestcaseIdx].time || '0 ms'}</strong></div>
+                            <div>💾 {language === 'vi' ? 'Bộ nhớ đã dùng:' : 'Memory:'} <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{lastResults[selectedTestcaseIdx].memory || '0 MB'}</strong></div>
+                          </div>
+
+                          <div>
+                            <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', fontWeight: 600 }}>
+                              Input:
+                            </div>
+                            <pre style={{
+                              background: 'rgba(0,0,0,0.2)',
+                              padding: '0.5rem 0.75rem',
+                              borderRadius: '0.375rem',
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: '0.6875rem',
+                              color: 'var(--text-primary)',
+                              whiteSpace: 'pre-wrap',
+                              border: '1px solid rgba(255,255,255,0.05)'
+                            }}>
+                              {lastResults[selectedTestcaseIdx].input}
+                            </pre>
+                          </div>
+
+                          <div>
+                            <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', fontWeight: 600 }}>
+                              {language === 'vi' ? 'Đầu ra thực tế (Output):' : 'Output:'}
+                            </div>
+                            <pre style={{
+                              background: lastResults[selectedTestcaseIdx].passed ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)',
+                              border: lastResults[selectedTestcaseIdx].passed ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
+                              padding: '0.5rem 0.75rem',
+                              borderRadius: '0.375rem',
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: '0.6875rem',
+                              color: lastResults[selectedTestcaseIdx].passed ? '#34d399' : '#f87171',
+                              whiteSpace: 'pre-wrap'
+                            }}>
+                              {lastResults[selectedTestcaseIdx].actual || ' '}
+                            </pre>
+                          </div>
+
+                          <div>
+                            <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', fontWeight: 600 }}>
+                              Expected:
+                            </div>
+                            <pre style={{
+                              background: 'rgba(0,0,0,0.2)',
+                              padding: '0.5rem 0.75rem',
+                              borderRadius: '0.375rem',
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: '0.6875rem',
+                              color: 'var(--text-primary)',
+                              whiteSpace: 'pre-wrap',
+                              border: '1px solid rgba(255,255,255,0.05)'
+                            }}>
+                              {lastResults[selectedTestcaseIdx].expected}
+                            </pre>
+                          </div>
+
+                          {lastResults[selectedTestcaseIdx].stdout && lastResults[selectedTestcaseIdx].stdout.trim() !== '' && (
+                            <div>
+                              <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', fontWeight: 600 }}>
+                                Stdout:
+                              </div>
+                              <pre style={{
+                                background: 'rgba(0,0,0,0.3)',
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '0.375rem',
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: '0.6875rem',
+                                color: 'var(--text-muted)',
+                                whiteSpace: 'pre-wrap',
+                                border: '1px dashed rgba(255,255,255,0.08)'
+                              }}>
+                                {lastResults[selectedTestcaseIdx].stdout}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '2rem 0', color: 'var(--text-muted)' }}>
+                      <span>{language === 'vi' ? 'Hãy chạy code để xem kết quả!' : 'Run code to see execution result!'}</span>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

@@ -107,17 +107,6 @@ export default function App() {
         }
       });
 
-      // Remove any #include or main() from loaded C++ templates
-      loadedProblems = loadedProblems.map((p: any) => {
-        if (p.defaultCode && p.defaultCode.cpp) {
-          let cppCode = p.defaultCode.cpp;
-          cppCode = cppCode.replace(/#include\s*[<"][^>"]*[>"]\n?/g, '');
-          cppCode = cppCode.replace(/using namespace std;\n?/g, '');
-          cppCode = cppCode.replace(/int main\(\) \{[\s\S]*\}\n?/g, '');
-          p.defaultCode.cpp = cppCode.trimStart();
-        }
-        return p;
-      });
       return loadedProblems;
     } catch (e) {
       return [...CODING_PROBLEMS];
@@ -353,7 +342,7 @@ export default function App() {
           <div className="status-bar-left">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
               <span className="status-indicator-dot" />
-              <span>Sẵn sàng nộp bài</span>
+              <span>{language === 'vi' ? 'Sẵn sàng nộp bài' : 'Ready to submit'}</span>
             </div>
             <span>UTF-8</span>
             <span className="hidden-xs">Spaces: 4</span>
