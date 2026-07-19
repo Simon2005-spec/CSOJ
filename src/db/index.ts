@@ -10,6 +10,8 @@ export const createPool = () => {
     user: process.env.SQL_USER,
     password: process.env.SQL_PASSWORD,
     database: process.env.SQL_DB_NAME,
+    max: 2, // Restrict connection limit to avoid exhausting Cloud SQL connections
+    idleTimeoutMillis: 1000, // Close idle clients after 1 second to release DB slots
     connectionTimeoutMillis: 15000,
   });
 };
