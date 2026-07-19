@@ -125,13 +125,89 @@ export default function App() {
     }
   });
 
-  // Sync problems list
+  // Fetch problems on mount and periodically
+  useEffect(() => {
+    const fetchProblems = async () => {
+      try {
+        const res = await fetch('/api/problems');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data) && data.length > 0) {
+            setProblems(data);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch problems from server:", err);
+      }
+    };
+    fetchProblems();
+    // Poll every 8 seconds to synchronize new/edited problems automatically
+    const interval = setInterval(fetchProblems, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch student progress on login
+  useEffect(() => {
+    if (!isLoggedIn || !username || username === 'admin') return;
+
+    const loadUserProgress = async () => {
+      try {
+        const res = await fetch(`/api/submissions/${username}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data) {
+            if (data.codingAnswers) {
+              setCodingAnswers(data.codingAnswers);
+            }
+            if (typeof data.timeLeft === 'number') {
+              setTimeLeft(data.timeLeft);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load user progress from server:", e);
+      }
+    };
+
+    loadUserProgress();
+  }, [isLoggedIn, username]);
+
+  // Sync coding progress and timeLeft to server
+  useEffect(() => {
+    if (!isLoggedIn || !username || username === 'admin') return;
+    
+    const syncSub = async () => {
+      try {
+        const passedCount = Object.values(codingAnswers).filter(a => a.passed).length;
+        const calculatedScore = parseFloat(((passedCount / (problems.length || 1)) * 10).toFixed(1));
+        
+        await fetch('/api/submissions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username,
+            codingAnswers,
+            timeLeft,
+            isFinished: false,
+            score: calculatedScore
+          })
+        });
+      } catch (e) {
+        console.error("Error syncing submission to server:", e);
+      }
+    };
+
+    const delayDebounce = setTimeout(syncSub, 1500);
+    return () => clearTimeout(delayDebounce);
+  }, [codingAnswers, timeLeft, username, isLoggedIn, problems.length]);
+
+  // Sync problems list to localStorage
   useEffect(() => {
     safeStorage.setItem('csoj_problems', JSON.stringify(problems));
   }, [problems]);
 
   // Handle adding new problem
-  const handleAddProblem = (newProb: CodingProblem) => {
+  const handleAddProblem = async (newProb: CodingProblem) => {
     setProblems((prev) => {
       const filtered = prev.filter((p) => p.id !== newProb.id);
       return [...filtered, newProb];
@@ -139,10 +215,19 @@ export default function App() {
     if (!currentProblemId) {
       setCurrentProblemId(newProb.id);
     }
+    try {
+      await fetch('/api/problems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProb)
+      });
+    } catch (e) {
+      console.error("Error saving problem to server:", e);
+    }
   };
 
   // Handle editing/updating a problem
-  const handleEditProblem = (oldId: string, updatedProb: CodingProblem) => {
+  const handleEditProblem = async (oldId: string, updatedProb: CodingProblem) => {
     setProblems((prev) => {
       const index = prev.findIndex((p) => p.id === oldId);
       if (index !== -1) {
@@ -155,10 +240,22 @@ export default function App() {
     if (currentProblemId === oldId) {
       setCurrentProblemId(updatedProb.id);
     }
+    try {
+      if (oldId !== updatedProb.id) {
+        await fetch(`/api/problems/${oldId}`, { method: 'DELETE' });
+      }
+      await fetch('/api/problems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedProb)
+      });
+    } catch (e) {
+      console.error("Error editing problem on server:", e);
+    }
   };
 
   // Handle removing a problem
-  const handleRemoveProblem = (problemId: string) => {
+  const handleRemoveProblem = async (problemId: string) => {
     setProblems((prev) => {
       const updated = prev.filter((p) => p.id !== problemId);
       if (currentProblemId === problemId) {
@@ -166,6 +263,11 @@ export default function App() {
       }
       return updated;
     });
+    try {
+      await fetch(`/api/problems/${problemId}`, { method: 'DELETE' });
+    } catch (e) {
+      console.error("Error deleting problem from server:", e);
+    }
   };
 
   // 4. Persistence in localStorage
