@@ -241,7 +241,7 @@ export default function HomeSection({
           ) : (
             <>
               {/* Card 1: Practical Programming */}
-              <div className="dashboard-card-wrap" style={{ flex: '1 1 400px', maxWidth: '480px' }}>
+              <div className="dashboard-card-wrap" style={{ flex: '1 1 500px', maxWidth: '550px', margin: '0 auto', width: '100%' }}>
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -328,107 +328,6 @@ export default function HomeSection({
                         <ArrowRight size={13} />
                       </button>
                     )}
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* Card 2: Classroom Standings Leaderboard */}
-              <div className="dashboard-card-wrap" style={{ flex: '1 1 400px', maxWidth: '480px' }}>
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 }}
-                  className="csoj-card liquid-glass"
-                  style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
-                >
-                  <div className="card-decorative-glow" style={{ background: 'radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%)' }} />
-
-                  <div>
-                    <div className="card-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <div className="card-icon-badge" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308' }}>
-                        <Trophy size={18} />
-                      </div>
-                      <div className="card-duration-badge" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <Activity size={12} className="pulse-animation" />
-                        <span>{language === 'vi' ? 'Đồng bộ trực tuyến' : 'Live Sync'}</span>
-                      </div>
-                    </div>
-
-                    <div className="card-title-block" style={{ marginBottom: '1rem' }}>
-                      <h3 className="card-title" style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                        <span>{language === 'vi' ? 'Bảng Điểm Lớp Học' : 'Classroom Standings'}</span>
-                      </h3>
-                      <p className="card-description">
-                        {language === 'vi'
-                          ? 'Xem tiến độ hoàn thành bài tập lập trình của tất cả học sinh trong phòng máy.'
-                          : 'View real-time practical programming standings and progress for the entire lab.'}
-                      </p>
-                    </div>
-
-                    {/* Submissions Standings List */}
-                    <div style={{ maxHeight: '200px', overflowY: 'auto', background: 'rgba(0,0,0,0.15)', borderRadius: '0.75rem', padding: '0.5rem', border: '1px solid var(--border-element)' }} className="custom-scrollbar">
-                      {Object.keys(submissions).length === 0 ? (
-                        <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                          {language === 'vi' ? 'Chưa có hoạt động nộp bài nào' : 'No submission activity recorded yet'}
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                          {Object.values(submissions)
-                            .sort((a, b) => (b.score || 0) - (a.score || 0))
-                            .map((sub: any, index) => {
-                              const isCurrentUser = sub.username.toLowerCase() === username.toLowerCase();
-                              const passedCount = Object.values(sub.codingAnswers || {}).filter((a: any) => a.passed).length;
-                              return (
-                                <div
-                                  key={sub.username}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    padding: '0.5rem 0.75rem',
-                                    borderRadius: '0.5rem',
-                                    background: isCurrentUser ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255,255,255,0.02)',
-                                    border: `1px solid ${isCurrentUser ? 'rgba(99, 102, 241, 0.3)' : 'transparent'}`,
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <div style={{
-                                      fontSize: '0.75rem',
-                                      fontWeight: 'bold',
-                                      width: '1.25rem',
-                                      height: '1.25rem',
-                                      borderRadius: '50%',
-                                      background: index === 0 ? '#eab308' : index === 1 ? '#94a3b8' : index === 2 ? '#b45309' : 'rgba(255,255,255,0.08)',
-                                      color: index < 3 ? '#0f172a' : 'var(--text-muted)',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center'
-                                    }}>
-                                      {index + 1}
-                                    </div>
-                                    <span style={{ fontSize: '0.875rem', fontWeight: isCurrentUser ? 600 : 500, color: isCurrentUser ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                                      {sub.username} {isCurrentUser && <span style={{ fontSize: '0.7rem', color: '#6366f1', background: 'rgba(99, 102, 241, 0.15)', padding: '0.05rem 0.25rem', borderRadius: '0.25rem', marginLeft: '0.25rem' }}>bạn</span>}
-                                    </span>
-                                  </div>
-
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                      {passedCount}/{problems.length} {language === 'vi' ? 'bài' : 'solved'}
-                                    </span>
-                                    <span style={{ fontSize: '0.875rem', fontWeight: 'bold', color: '#10b981' }}>
-                                      {parseFloat((sub.score || 0).toFixed(1))}đ
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', borderTop: '1px solid var(--border-element)', paddingTop: '0.5rem', marginTop: '0.75rem' }}>
-                    {language === 'vi' ? 'Cập nhật tự động mỗi 4 giây' : 'Auto-updates every 4 seconds'}
                   </div>
                 </motion.div>
               </div>

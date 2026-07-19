@@ -80,36 +80,13 @@ export default function App() {
     return saved !== null ? saved === 'true' : true;
   });
 
-  // 1.5 Dynamic Problems State (synchronized with localStorage)
+  // 1.5 Dynamic Problems State (synchronized with database)
   const [problems, setProblems] = useState<CodingProblem[]>(() => {
     try {
       const saved = safeStorage.getItem('csoj_problems');
-      let loadedProblems = saved ? JSON.parse(saved) : [...CODING_PROBLEMS];
-      
-      // Force update default/core problems if they match standard CODING_PROBLEMS IDs
-      // so any code-level updates (such as markdown or math formatting) take effect instantly
-      loadedProblems = loadedProblems.map((p: any) => {
-        const defaultMatch = CODING_PROBLEMS.find((dp) => dp.id === p.id);
-        if (defaultMatch) {
-          return {
-            ...defaultMatch,
-            // If they had customized standard problems via admin, we still prefer code updates here to guarantee markdown rendering
-          };
-        }
-        return p;
-      });
-
-      // Append any default problems that might be missing entirely
-      const loadedIds = loadedProblems.map((p: any) => p.id);
-      CODING_PROBLEMS.forEach((dp) => {
-        if (!loadedIds.includes(dp.id)) {
-          loadedProblems.push(dp);
-        }
-      });
-
-      return loadedProblems;
+      return saved ? JSON.parse(saved) : [];
     } catch (e) {
-      return [...CODING_PROBLEMS];
+      return [];
     }
   });
 
@@ -118,12 +95,19 @@ export default function App() {
   const [currentProblemId, setCurrentProblemId] = useState(() => {
     try {
       const saved = safeStorage.getItem('csoj_problems');
-      const probs = saved ? JSON.parse(saved) : CODING_PROBLEMS;
+      const probs = saved ? JSON.parse(saved) : [];
       return probs[0]?.id || '';
     } catch (e) {
-      return CODING_PROBLEMS[0]?.id || '';
+      return '';
     }
   });
+
+  // Sync currentProblemId when problems list updates
+  useEffect(() => {
+    if (problems.length > 0 && (!currentProblemId || !problems.some(p => p.id === currentProblemId))) {
+      setCurrentProblemId(problems[0].id);
+    }
+  }, [problems, currentProblemId]);
 
   // Fetch problems on mount and periodically
   useEffect(() => {
@@ -132,7 +116,7 @@ export default function App() {
         const res = await fetch('/api/problems');
         if (res.ok) {
           const data = await res.json();
-          if (data && Array.isArray(data) && data.length > 0) {
+          if (data && Array.isArray(data)) {
             setProblems(data);
           }
         }
@@ -141,8 +125,8 @@ export default function App() {
       }
     };
     fetchProblems();
-    // Poll every 8 seconds to synchronize new/edited problems automatically
-    const interval = setInterval(fetchProblems, 8000);
+    // Poll every 5 seconds to synchronize new/edited problems automatically across all sessions
+    const interval = setInterval(fetchProblems, 5000);
     return () => clearInterval(interval);
   }, []);
 

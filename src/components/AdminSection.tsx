@@ -12,7 +12,8 @@ import {
    Eye,
    X,
    Briefcase,
-   Pencil
+   Pencil,
+   Trophy
 } from 'lucide-react';
 import { CodingProblem } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -33,8 +34,32 @@ export default function AdminSection({
   onLogout 
 }: AdminSectionProps) {
   // Navigation / Tabs within Admin
-  const [adminTab, setAdminTab] = useState<'list' | 'add'>('list');
+  const [adminTab, setAdminTab] = useState<'list' | 'add' | 'submissions'>('list');
   const [editingProblemId, setEditingProblemId] = useState<string | null>(null);
+
+  const [submissions, setSubmissions] = useState<{ [username: string]: any }>({});
+  const [viewingUserCode, setViewingUserCode] = useState<{ username: string; problemId: string; code: string; language: string; passed: boolean } | null>(null);
+
+  // Poll submissions dynamically when the submissions tab is active
+  useEffect(() => {
+    if (adminTab !== 'submissions') return;
+    const fetchSubmissions = async () => {
+      try {
+        const res = await fetch('/api/submissions');
+        if (res.ok) {
+          const data = await res.json();
+          if (data) {
+            setSubmissions(data);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch submissions:", err);
+      }
+    };
+    fetchSubmissions();
+    const interval = setInterval(fetchSubmissions, 4000);
+    return () => clearInterval(interval);
+  }, [adminTab]);
 
   // Form Fields State
   const [id, setId] = useState('');
@@ -533,6 +558,25 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
           {editingProblemId ? <Pencil size={13} /> : <Plus size={13} />}
           <span>{editingProblemId ? 'Chỉnh sửa câu hỏi' : 'Thêm câu hỏi mới'}</span>
         </button>
+        <button
+          onClick={() => setAdminTab('submissions')}
+          className="csoj-btn"
+          style={{
+            background: adminTab === 'submissions' ? 'var(--accent-gradient)' : 'transparent',
+            color: adminTab === 'submissions' ? 'white' : 'var(--text-muted)',
+            boxShadow: adminTab === 'submissions' ? '0 4px 12px rgba(16, 185, 129, 0.15)' : 'none',
+            padding: '0.5rem 1rem',
+            fontSize: '0.8125rem',
+            borderRadius: '0.375rem',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem'
+          }}
+        >
+          <Trophy size={13} />
+          <span>Bảng điểm học viên</span>
+        </button>
       </div>
 
       {/* VIEW 1: Problems List Management */}
@@ -954,6 +998,165 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
                 style={{ background: '#ef4444', color: 'white', padding: '0.5rem 1.5rem', fontWeight: 700 }}
               >
                 Xác nhận xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 3: Student Submissions / Grades */}
+      {adminTab === 'submissions' && (
+        <div className="liquid-glass rounded-xl overflow-hidden border border-[var(--border-element)] shadow-xl w-full p-4 md:p-6">
+          <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                Bảng Điểm Từng Học Viên
+              </h2>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>
+                Danh sách chi tiết tiến trình thực tế, điểm số và bài làm chi tiết của từng người học.
+              </p>
+            </div>
+            <span style={{ fontSize: '0.75rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '0.375rem 0.75rem', borderRadius: '0.5rem', fontWeight: 600 }}>
+              Cập nhật tự động mỗi 4 giây
+            </span>
+          </div>
+
+          <div className="overflow-x-auto w-full custom-scrollbar">
+            <table className="w-full border-collapse text-left text-xs md:text-sm min-w-[800px]">
+              <thead>
+                <tr style={{ background: 'rgba(120, 120, 120, 0.05)', borderBottom: '1px solid var(--border-element)' }}>
+                  <th style={{ padding: '1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>STT</th>
+                  <th style={{ padding: '1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Tên học viên (Username)</th>
+                  <th style={{ padding: '1rem', fontWeight: 700, color: 'var(--text-secondary)', textAlign: 'center' }}>Số bài Đạt (Đạt / Tổng)</th>
+                  <th style={{ padding: '1rem', fontWeight: 700, color: 'var(--text-secondary)', textAlign: 'center' }}>Điểm số (Thang 10)</th>
+                  <th style={{ padding: '1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Chi tiết từng bài thi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-element)]">
+                {Object.keys(submissions).length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      Chưa có học viên nào nộp bài hoặc bắt đầu làm bài thi lập trình.
+                    </td>
+                  </tr>
+                ) : (
+                  Object.values(submissions)
+                    .sort((a, b) => b.score - a.score)
+                    .map((sub: any, index) => {
+                      const userAnswers = sub.codingAnswers || {};
+                      const passedCount = Object.values(userAnswers).filter((ans: any) => ans.passed).length;
+                      return (
+                        <tr key={sub.username} className="hover:bg-white/[0.02] transition-colors">
+                          <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>{index + 1}</td>
+                          <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{sub.username}</td>
+                          <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 700 }}>
+                            <span style={{ color: passedCount === problems.length && problems.length > 0 ? '#10b981' : 'var(--text-secondary)' }}>
+                              {passedCount} / {problems.length}
+                            </span>
+                          </td>
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#10b981' }}>
+                              {parseFloat((sub.score || 0).toFixed(1))}đ
+                            </span>
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              {problems.length === 0 ? (
+                                <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.75rem' }}>Chưa có câu hỏi thi nào được thêm</span>
+                              ) : (
+                                problems.map((prob) => {
+                                  const ans = userAnswers[prob.id];
+                                  const hasSubmitted = !!ans;
+                                  const passed = ans?.passed;
+                                  return (
+                                    <div 
+                                      key={prob.id}
+                                      style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '0.375rem', 
+                                        padding: '0.25rem 0.5rem', 
+                                        borderRadius: '0.375rem', 
+                                        background: passed ? 'rgba(16, 185, 129, 0.1)' : hasSubmitted ? 'rgba(239, 68, 68, 0.1)' : 'rgba(120, 120, 120, 0.04)',
+                                        border: `1px solid ${passed ? 'rgba(16, 185, 129, 0.2)' : hasSubmitted ? 'rgba(239, 68, 68, 0.2)' : 'var(--border-element)'}`,
+                                        fontSize: '0.75rem'
+                                      }}
+                                    >
+                                      <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{prob.title}:</span>
+                                      {hasSubmitted ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => setViewingUserCode({
+                                            username: sub.username,
+                                            problemId: prob.id,
+                                            code: ans.code || '',
+                                            language: ans.language || 'python',
+                                            passed: !!ans.passed
+                                          })}
+                                          className="hover:underline font-bold"
+                                          style={{ color: passed ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '0.125rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                                        >
+                                          <span>{passed ? 'ĐẠT' : 'SAI'}</span>
+                                          <Eye size={11} />
+                                        </button>
+                                      ) : (
+                                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Chưa làm</span>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Code Viewer Modal for Admin to view student submissions */}
+      {viewingUserCode && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(5px)' }}>
+          <div className="liquid-glass" style={{ maxWidth: '800px', width: '100%', borderRadius: '1rem', padding: '1.5rem', border: '1px solid var(--border-element)', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '90vh' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-element)', paddingBottom: '0.75rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800 }}>Mã nguồn bài làm của học viên</h3>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Học viên: <strong style={{ color: 'var(--text-primary)' }}>{viewingUserCode.username}</strong> | Mã bài: <strong style={{ color: 'var(--text-primary)' }}>{viewingUserCode.problemId}</strong> | Ngôn ngữ: <strong style={{ color: '#10b981', textTransform: 'uppercase' }}>{viewingUserCode.language}</strong>
+                </p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setViewingUserCode(null)} 
+                style={{ background: 'rgba(120,120,120,0.1)', border: 'none', padding: '0.375rem', borderRadius: '50%', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', background: viewingUserCode.passed ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: viewingUserCode.passed ? '#10b981' : '#ef4444', fontWeight: 700 }}>
+              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: viewingUserCode.passed ? '#10b981' : '#ef4444' }}></span>
+              <span>Trạng thái kiểm thử chấm điểm: {viewingUserCode.passed ? 'ĐẠT (Tất cả testcases chính xác)' : 'KHÔNG ĐẠT (Sai hoặc lỗi logic)'}</span>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', borderRadius: '0.5rem', border: '1px solid var(--border-element)', background: 'rgba(0,0,0,0.2)', padding: '1rem' }} className="custom-scrollbar">
+              <pre style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: '0.8125rem', whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: '#e2e8f0', lineHeight: 1.5 }}>
+                {viewingUserCode.code || '// Học viên chưa lưu hoặc nộp bài.'}
+              </pre>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.5rem', borderTop: '1px solid var(--border-element)' }}>
+              <button
+                type="button"
+                onClick={() => setViewingUserCode(null)}
+                className="csoj-btn csoj-btn-primary"
+                style={{ padding: '0.5rem 1.5rem', fontWeight: 700 }}
+              >
+                Đóng lại
               </button>
             </div>
           </div>
