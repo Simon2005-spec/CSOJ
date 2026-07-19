@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Clock, Sun, Moon, LogOut, Code, Home, Settings, Globe } from 'lucide-react';
+import { Clock, Sun, Moon, LogOut, Code, Home, Settings, Globe, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface HeaderProps {
@@ -16,6 +16,7 @@ interface HeaderProps {
   onLogout: () => void;
   language: 'vi' | 'en';
   setLanguage: (lang: 'vi' | 'en') => void;
+  onRefreshProblems?: () => Promise<void>;
 }
 
 const translations = {
@@ -61,12 +62,22 @@ export default function Header({
   onGoHome,
   onLogout,
   language,
-  setLanguage
+  setLanguage,
+  onRefreshProblems
 }: HeaderProps) {
   const t = translations[language];
   const [showDropdown, setShowDropdown] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleSync = async () => {
+    if (onRefreshProblems) {
+      setIsSyncing(true);
+      await onRefreshProblems();
+      setTimeout(() => setIsSyncing(false), 800);
+    }
+  };
 
   // Format seconds to HH:MM:SS
   const formatTime = (seconds: number) => {
@@ -146,6 +157,28 @@ export default function Header({
 
       {/* Right side: User Profile & Dropdown */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        {onRefreshProblems && (
+          <button
+            onClick={handleSync}
+            className={`csoj-btn ${isDark ? 'csoj-btn-secondary' : 'csoj-btn-light'}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              fontSize: '0.75rem',
+              padding: '0.375rem 0.75rem',
+              borderRadius: '0.375rem',
+              height: '2rem',
+              border: '1px solid var(--border-element)',
+              cursor: 'pointer'
+            }}
+            title={language === 'vi' ? 'Đồng bộ câu hỏi từ máy chủ' : 'Sync problems from server'}
+          >
+            <RotateCcw size={12} className={isSyncing ? "spin-slow" : ""} />
+            <span className="hidden-xs">{language === 'vi' ? 'Đồng bộ' : 'Sync'}</span>
+          </button>
+        )}
+
         <div className="user-section" ref={dropdownRef}>
           <button onClick={() => setShowDropdown(!showDropdown)} className="user-profile-trigger">
             <div className="user-avatar">

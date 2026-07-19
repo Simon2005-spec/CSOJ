@@ -88,28 +88,30 @@ export default function App() {
     }
   }, [problems, currentProblemId]);
 
-  // Fetch problems on mount and periodically
-  useEffect(() => {
-    const fetchProblems = async () => {
-      try {
-        const res = await fetch(`/api/problems?t=${Date.now()}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && Array.isArray(data)) {
-            setProblems(data);
-          }
+  // Fetch problems from server
+  const fetchProblems = async () => {
+    try {
+      const res = await fetch(`/api/problems?t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data)) {
+          setProblems(data);
         }
-      } catch (err) {
-        console.error("Failed to fetch problems from server:", err);
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch problems from server:", err);
+    }
+  };
+
+  // Fetch problems on mount and periodically (lower frequency to protect DB connections)
+  useEffect(() => {
     fetchProblems();
-    // Poll every 3 seconds to synchronize new/edited problems automatically across all sessions
-    const interval = setInterval(fetchProblems, 3000);
+    // Poll every 25 seconds to synchronize new/edited problems automatically across sessions
+    const interval = setInterval(fetchProblems, 25000);
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch student progress on login
+  // Fetch student progress on login with retry mechanism
   useEffect(() => {
     if (!isLoggedIn || !username) {
       setIsProgressLoaded(false);
@@ -120,9 +122,12 @@ export default function App() {
       return;
     }
 
-    const loadUserProgress = async () => {
+    let active = true;
+    const loadUserProgress = async (retries = 5) => {
       try {
         const res = await fetch(`/api/submissions/${username}?t=${Date.now()}`);
+        if (!active) return;
+        
         if (res.ok) {
           const data = await res.json();
           if (data) {
@@ -136,15 +141,27 @@ export default function App() {
             setCodingAnswers({});
             setTimeLeft(5400);
           }
+          setIsProgressLoaded(true);
+        } else {
+          throw new Error(`Server status ${res.status}`);
         }
       } catch (e) {
         console.error("Failed to load user progress from server:", e);
-      } finally {
-        setIsProgressLoaded(true);
+        if (active && retries > 0) {
+          console.log(`Retrying to load user progress in 3s... (${retries} retries left)`);
+          setTimeout(() => {
+            if (active) loadUserProgress(retries - 1);
+          }, 3000);
+        } else if (active) {
+          console.warn("Could not load user progress after max retries. Overwrite protection is ACTIVE.");
+        }
       }
     };
 
     loadUserProgress();
+    return () => {
+      active = false;
+    };
   }, [isLoggedIn, username]);
 
   // Sync coding progress on typing/change with debounce (1.5 seconds)
@@ -199,7 +216,7 @@ export default function App() {
       } catch (e) {
         console.error("Error heartbeat syncing submission to server:", e);
       }
-    }, 10000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [isLoggedIn, username, isProgressLoaded, problems.length]);
@@ -413,6 +430,7 @@ export default function App() {
           onLogout={handleLogout}
           language={language}
           setLanguage={setLanguage}
+          onRefreshProblems={fetchProblems}
         />
       )}
 
@@ -439,6 +457,7 @@ export default function App() {
                 language={language}
                 setLanguage={setLanguage}
                 onResetCoding={handleResetCoding}
+                onRefreshProblems={fetchProblems}
               />
             </motion.div>
           ) : (

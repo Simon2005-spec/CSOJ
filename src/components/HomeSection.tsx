@@ -16,6 +16,7 @@ interface HomeSectionProps {
   language: 'vi' | 'en';
   setLanguage: (lang: 'vi' | 'en') => void;
   onResetCoding: () => void;
+  onRefreshProblems?: () => Promise<void>;
 }
 
 const translations = {
@@ -89,13 +90,23 @@ export default function HomeSection({
   onLogout,
   language,
   setLanguage,
-  onResetCoding
+  onResetCoding,
+  onRefreshProblems
 }: HomeSectionProps) {
   const t = translations[language];
   const [showDropdown, setShowDropdown] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showResetCodingConfirm, setShowResetCodingConfirm] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleSync = async () => {
+    if (onRefreshProblems) {
+      setIsSyncing(true);
+      await onRefreshProblems();
+      setTimeout(() => setIsSyncing(false), 800);
+    }
+  };
 
   const passedCodingCount = Object.values(codingAnswers).filter((ans) => ans.passed).length;
   const codingProgressPercent = problems.length > 0 ? (passedCodingCount / problems.length) * 100 : 0;
@@ -123,7 +134,30 @@ export default function HomeSection({
           </span>
         </div>
 
-        <div className="user-section" ref={dropdownRef}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {onRefreshProblems && (
+            <button
+              onClick={handleSync}
+              className={`csoj-btn ${isDark ? 'csoj-btn-secondary' : 'csoj-btn-light'}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                fontSize: '0.8125rem',
+                padding: '0.375rem 0.75rem',
+                borderRadius: '0.375rem',
+                height: '2.25rem',
+                border: '1px solid var(--border-element)',
+                cursor: 'pointer'
+              }}
+              title={language === 'vi' ? 'Đồng bộ câu hỏi từ máy chủ' : 'Sync problems from server'}
+            >
+              <RotateCcw size={13} className={isSyncing ? "spin-slow" : ""} />
+              <span className="hidden-xs">{language === 'vi' ? 'Đồng bộ đề bài' : 'Sync Problems'}</span>
+            </button>
+          )}
+
+          <div className="user-section" ref={dropdownRef}>
           <button onClick={() => setShowDropdown(!showDropdown)} className="user-profile-trigger">
             <div className="user-avatar">
               {username ? username[0].toUpperCase() : 'U'}
@@ -173,6 +207,7 @@ export default function HomeSection({
           </AnimatePresence>
         </div>
       </div>
+    </div>
 
       <div className="dashboard-content">
         {/* 2. Welcome text */}
