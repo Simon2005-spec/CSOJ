@@ -72,6 +72,12 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
+// --- ROBUST FALLBACK DATA STORE ---
+// In-memory arrays initialized with default CODING_PROBLEMS
+let inMemoryProblems: CodingProblem[] = [...CODING_PROBLEMS];
+let inMemorySubmissions: { [username: string]: any } = {};
+let useDatabase = true; // Will dynamically fall back to false if database is not available
+
 // Seed the database if empty (non-blocking)
 (async () => {
   try {
@@ -82,11 +88,14 @@ app.use("/api", (req, res, next) => {
         await db.insert(dbProblems).values(serializeProblem(prob));
       }
       console.log("Seeding complete.");
+      inMemoryProblems = [...CODING_PROBLEMS];
     } else {
       console.log(`Database initialized. Loaded ${dbProbs.length} coding problems.`);
+      inMemoryProblems = dbProbs.map(deserializeProblem);
     }
   } catch (err) {
-    console.error("Error connecting to database or seeding:", err);
+    console.warn("⚠️ Warning: Cannot connect to PostgreSQL database. Falling back to robust in-memory serverless storage:", err.message);
+    useDatabase = false;
   }
 })();
 
@@ -95,13 +104,17 @@ app.use("/api", (req, res, next) => {
 // 1. Get all problems
 app.get("/api/problems", async (req, res) => {
   try {
-    const dbProbs = await db.select().from(dbProblems);
-    const decodedProbs = dbProbs.map(deserializeProblem);
-    res.json(decodedProbs);
+    if (useDatabase) {
+      const dbProbs = await db.select().from(dbProblems);
+      const decodedProbs = dbProbs.map(deserializeProblem);
+      inMemoryProblems = decodedProbs;
+      return res.json(decodedProbs);
+    }
   } catch (err) {
-    console.error("Failed to fetch problems from database:", err);
-    res.status(500).json({ error: "Failed to fetch problems" });
+    console.warn("⚠️ Database query failed, falling back to memory:", err.message);
+    useDatabase = false;
   }
+  res.json(inMemoryProblems);
 });
 
 // 2. Add or update a problem
@@ -112,19 +125,33 @@ app.post("/api/problems", async (req, res) => {
       return res.status(400).json({ error: "Invalid problem structure" });
     }
 
-    const serialized = serializeProblem(newProb);
+    // Always update in memory store immediately
+    const existingIdx = inMemoryProblems.findIndex(p => p.id === newProb.id);
+    if (existingIdx !== -1) {
+      inMemoryProblems[existingIdx] = newProb;
+    } else {
+      inMemoryProblems.push(newProb);
+    }
 
-    await db.insert(dbProblems)
-      .values(serialized)
-      .onConflictDoUpdate({
-        target: dbProblems.id,
-        set: serialized
-      });
+    if (useDatabase) {
+      try {
+        const serialized = serializeProblem(newProb);
+        await db.insert(dbProblems)
+          .values(serialized)
+          .onConflictDoUpdate({
+            target: dbProblems.id,
+            set: serialized
+          });
+        console.log(`Successfully added/updated problem ID: ${newProb.id}`);
+      } catch (err) {
+        console.warn("⚠️ Database write failed, saved to server memory fallback:", err.message);
+        useDatabase = false;
+      }
+    }
 
-    console.log(`Successfully added/updated problem ID: ${newProb.id}`);
     res.json({ success: true, problem: newProb });
   } catch (err) {
-    console.error("Failed to save problem in database:", err);
+    console.error("Failed to save problem:", err);
     res.status(500).json({ error: "Failed to save problem" });
   }
 });
@@ -133,11 +160,21 @@ app.post("/api/problems", async (req, res) => {
 app.delete("/api/problems/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    await db.delete(dbProblems).where(eq(dbProblems.id, id));
-    console.log(`Successfully deleted problem ID: ${id}`);
+    inMemoryProblems = inMemoryProblems.filter(p => p.id !== id);
+
+    if (useDatabase) {
+      try {
+        await db.delete(dbProblems).where(eq(dbProblems.id, id));
+        console.log(`Successfully deleted problem ID: ${id}`);
+      } catch (err) {
+        console.warn("⚠️ Database delete failed, deleted from server memory fallback:", err.message);
+        useDatabase = false;
+      }
+    }
+
     res.json({ success: true });
   } catch (err) {
-    console.error("Failed to delete problem from database:", err);
+    console.error("Failed to delete problem:", err);
     res.status(500).json({ error: "Failed to delete problem" });
   }
 });
@@ -145,32 +182,41 @@ app.delete("/api/problems/:id", async (req, res) => {
 // 4. Get all submissions (for leaderboard/admin grading dashboard)
 app.get("/api/submissions", async (req, res) => {
   try {
-    const dbSubs = await db.select().from(dbSubmissions);
-    const result: { [username: string]: any } = {};
-    for (const sub of dbSubs) {
-      result[sub.username] = deserializeSubmission(sub);
+    if (useDatabase) {
+      const dbSubs = await db.select().from(dbSubmissions);
+      const result: { [username: string]: any } = {};
+      for (const sub of dbSubs) {
+        result[sub.username] = deserializeSubmission(sub);
+      }
+      inMemorySubmissions = result;
+      return res.json(result);
     }
-    res.json(result);
   } catch (err) {
-    console.error("Failed to fetch submissions from database:", err);
-    res.status(500).json({ error: "Failed to fetch submissions" });
+    console.warn("⚠️ Database submissions fetch failed, falling back to memory:", err.message);
+    useDatabase = false;
   }
+  res.json(inMemorySubmissions);
 });
 
 // 5. Get a specific user's submission state
 app.get("/api/submissions/:username", async (req, res) => {
+  const username = req.params.username.toLowerCase();
   try {
-    const username = req.params.username.toLowerCase();
-    const dbSubs = await db.select().from(dbSubmissions).where(eq(dbSubmissions.username, username)).limit(1);
-    if (dbSubs.length > 0) {
-      res.json(deserializeSubmission(dbSubs[0]));
-    } else {
-      res.json(null);
+    if (useDatabase) {
+      const dbSubs = await db.select().from(dbSubmissions).where(eq(dbSubmissions.username, username)).limit(1);
+      if (dbSubs.length > 0) {
+        const decoded = deserializeSubmission(dbSubs[0]);
+        inMemorySubmissions[username] = decoded;
+        return res.json(decoded);
+      } else {
+        return res.json(null);
+      }
     }
   } catch (err) {
-    console.error("Failed to fetch user submission from database:", err);
-    res.status(500).json({ error: "Failed to fetch user submission" });
+    console.warn("⚠️ Database single submission fetch failed, falling back to memory:", err.message);
+    useDatabase = false;
   }
+  res.json(inMemorySubmissions[username] || null);
 });
 
 // 6. Save/update user submission state
@@ -182,25 +228,45 @@ app.post("/api/submissions", async (req, res) => {
     }
 
     const normUser = username.toLowerCase();
-    const payload = {
+    const memoryPayload = {
       username: normUser,
-      codingAnswers: JSON.stringify(codingAnswers || {}),
+      codingAnswers: codingAnswers || {},
       timeLeft: timeLeft ?? 5400,
       isFinished: !!isFinished,
-      score: String(score ?? 0),
+      score: score ?? 0,
       updatedAt: new Date().toISOString()
     };
 
-    await db.insert(dbSubmissions)
-      .values(payload)
-      .onConflictDoUpdate({
-        target: dbSubmissions.username,
-        set: payload
-      });
+    // Always update in-memory immediately
+    inMemorySubmissions[normUser] = memoryPayload;
 
-    res.json({ success: true, data: { ...payload, codingAnswers, score } });
+    if (useDatabase) {
+      try {
+        const payload = {
+          username: normUser,
+          codingAnswers: JSON.stringify(codingAnswers || {}),
+          timeLeft: timeLeft ?? 5400,
+          isFinished: !!isFinished,
+          score: String(score ?? 0),
+          updatedAt: new Date().toISOString()
+        };
+
+        await db.insert(dbSubmissions)
+          .values(payload)
+          .onConflictDoUpdate({
+            target: dbSubmissions.username,
+            set: payload
+          });
+        console.log(`Successfully saved submission for ${normUser} to DB`);
+      } catch (err) {
+        console.warn("⚠️ Database submission write failed, saved to server memory fallback:", err.message);
+        useDatabase = false;
+      }
+    }
+
+    res.json({ success: true, data: memoryPayload });
   } catch (err) {
-    console.error("Failed to save submission in database:", err);
+    console.error("Failed to save submission:", err);
     res.status(500).json({ error: "Failed to save submission" });
   }
 });

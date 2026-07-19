@@ -5,6 +5,17 @@ import * as schema from './schema.ts';
 
 // Function to create a new connection pool.
 export const createPool = () => {
+  const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+  if (connectionString) {
+    return new Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false }, // required for secure external/Vercel connections
+      max: 2, // Restrict connection limit to avoid exhausting Cloud SQL connections
+      idleTimeoutMillis: 1000, // Close idle clients after 1 second to release DB slots
+      connectionTimeoutMillis: 15000,
+    });
+  }
+
   return new Pool({
     host: process.env.SQL_HOST,
     user: process.env.SQL_USER,
