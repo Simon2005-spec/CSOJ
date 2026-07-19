@@ -45,7 +45,7 @@ export default function AdminSection({
     if (adminTab !== 'submissions') return;
     const fetchSubmissions = async () => {
       try {
-        const res = await fetch('/api/submissions');
+        const res = await fetch(`/api/submissions?t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
           if (data) {
@@ -57,7 +57,7 @@ export default function AdminSection({
       }
     };
     fetchSubmissions();
-    const interval = setInterval(fetchSubmissions, 4000);
+    const interval = setInterval(fetchSubmissions, 3000);
     return () => clearInterval(interval);
   }, [adminTab]);
 

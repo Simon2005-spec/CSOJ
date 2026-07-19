@@ -113,7 +113,7 @@ export default function App() {
   useEffect(() => {
     const fetchProblems = async () => {
       try {
-        const res = await fetch('/api/problems');
+        const res = await fetch(`/api/problems?t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
           if (data && Array.isArray(data)) {
@@ -125,8 +125,8 @@ export default function App() {
       }
     };
     fetchProblems();
-    // Poll every 5 seconds to synchronize new/edited problems automatically across all sessions
-    const interval = setInterval(fetchProblems, 5000);
+    // Poll every 3 seconds to synchronize new/edited problems automatically across all sessions
+    const interval = setInterval(fetchProblems, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -136,7 +136,7 @@ export default function App() {
 
     const loadUserProgress = async () => {
       try {
-        const res = await fetch(`/api/submissions/${username}`);
+        const res = await fetch(`/api/submissions/${username}?t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
           if (data) {

@@ -97,27 +97,6 @@ export default function HomeSection({
   const [showResetCodingConfirm, setShowResetCodingConfirm] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [submissions, setSubmissions] = useState<{ [username: string]: any }>({});
-
-  useEffect(() => {
-    const fetchSubmissions = async () => {
-      try {
-        const res = await fetch('/api/submissions');
-        if (res.ok) {
-          const data = await res.json();
-          if (data) {
-            setSubmissions(data);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch submissions:", err);
-      }
-    };
-    fetchSubmissions();
-    const interval = setInterval(fetchSubmissions, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
   const passedCodingCount = Object.values(codingAnswers).filter((ans) => ans.passed).length;
   const codingProgressPercent = problems.length > 0 ? (passedCodingCount / problems.length) * 100 : 0;
 

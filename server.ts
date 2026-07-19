@@ -65,6 +65,14 @@ async function startServer() {
   // JSON parsing with size limits
   app.use(express.json({ limit: "10mb" }));
 
+  // Disable caching for all API routes to force real-time sync across devices
+  app.use("/api", (req, res, next) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    next();
+  });
+
   // Seed the database if empty
   try {
     const dbProbs = await db.select().from(dbProblems);
