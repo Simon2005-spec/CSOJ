@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import CodeSection from './components/CodeSection';
 import HomeSection from './components/HomeSection';
@@ -51,29 +51,10 @@ export default function App() {
   });
 
   // 1. Core Exam States
-  const [timeLeft, setTimeLeft] = useState(() => {
-    try {
-      const saved = safeStorage.getItem('csoj_time_left');
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        return isNaN(parsed) ? 5400 : parsed;
-      }
-    } catch (e) {
-      // Fallback
-    }
-    return 5400; // 1h 30m default = 5400 seconds
-  });
-
+  const [timeLeft, setTimeLeft] = useState(5400); // 1h 30m default = 5400 seconds
   const [codingAnswers, setCodingAnswers] = useState<{
     [problemId: string]: { code: string; language: string; passed: boolean };
-  }>(() => {
-    try {
-      const saved = safeStorage.getItem('csoj_coding_answers');
-      return saved ? JSON.parse(saved) : {};
-    } catch (e) {
-      return {};
-    }
-  });
+  }>({});
 
   const [isDark, setIsDark] = useState(() => {
     const saved = safeStorage.getItem('csoj_theme_dark');
@@ -81,26 +62,24 @@ export default function App() {
   });
 
   // 1.5 Dynamic Problems State (synchronized with database)
-  const [problems, setProblems] = useState<CodingProblem[]>(() => {
-    try {
-      const saved = safeStorage.getItem('csoj_problems');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [problems, setProblems] = useState<CodingProblem[]>([]);
+  const [isProgressLoaded, setIsProgressLoaded] = useState(false);
+
+  // Refs for debounced & periodic server syncs to prevent race conditions & closures
+  const codingAnswersRef = useRef(codingAnswers);
+  const timeLeftRef = useRef(timeLeft);
+
+  useEffect(() => {
+    codingAnswersRef.current = codingAnswers;
+  }, [codingAnswers]);
+
+  useEffect(() => {
+    timeLeftRef.current = timeLeft;
+  }, [timeLeft]);
 
   // 2. Navigation States
   const [activeTab, setActiveTab] = useState<'home' | 'coding'>('home');
-  const [currentProblemId, setCurrentProblemId] = useState(() => {
-    try {
-      const saved = safeStorage.getItem('csoj_problems');
-      const probs = saved ? JSON.parse(saved) : [];
-      return probs[0]?.id || '';
-    } catch (e) {
-      return '';
-    }
-  });
+  const [currentProblemId, setCurrentProblemId] = useState('');
 
   // Sync currentProblemId when problems list updates
   useEffect(() => {
@@ -132,7 +111,14 @@ export default function App() {
 
   // Fetch student progress on login
   useEffect(() => {
-    if (!isLoggedIn || !username || username === 'admin') return;
+    if (!isLoggedIn || !username) {
+      setIsProgressLoaded(false);
+      return;
+    }
+    if (username === 'admin') {
+      setIsProgressLoaded(true);
+      return;
+    }
 
     const loadUserProgress = async () => {
       try {
@@ -146,23 +132,28 @@ export default function App() {
             if (typeof data.timeLeft === 'number') {
               setTimeLeft(data.timeLeft);
             }
+          } else {
+            setCodingAnswers({});
+            setTimeLeft(5400);
           }
         }
       } catch (e) {
         console.error("Failed to load user progress from server:", e);
+      } finally {
+        setIsProgressLoaded(true);
       }
     };
 
     loadUserProgress();
   }, [isLoggedIn, username]);
 
-  // Sync coding progress and timeLeft to server
+  // Sync coding progress on typing/change with debounce (1.5 seconds)
   useEffect(() => {
-    if (!isLoggedIn || !username || username === 'admin') return;
+    if (!isLoggedIn || !username || username === 'admin' || !isProgressLoaded) return;
     
     const syncSub = async () => {
       try {
-        const passedCount = Object.values(codingAnswers).filter(a => a.passed).length;
+        const passedCount = Object.values(codingAnswersRef.current).filter(a => a.passed).length;
         const calculatedScore = parseFloat(((passedCount / (problems.length || 1)) * 10).toFixed(1));
         
         await fetch('/api/submissions', {
@@ -170,8 +161,8 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             username,
-            codingAnswers,
-            timeLeft,
+            codingAnswers: codingAnswersRef.current,
+            timeLeft: timeLeftRef.current,
             isFinished: false,
             score: calculatedScore
           })
@@ -183,12 +174,35 @@ export default function App() {
 
     const delayDebounce = setTimeout(syncSub, 1500);
     return () => clearTimeout(delayDebounce);
-  }, [codingAnswers, timeLeft, username, isLoggedIn, problems.length]);
+  }, [codingAnswers, username, isLoggedIn, isProgressLoaded, problems.length]);
 
-  // Sync problems list to localStorage
+  // Periodic heartbeat backup sync (every 10 seconds) to sync timeLeft continuously without resetting typing debounce
   useEffect(() => {
-    safeStorage.setItem('csoj_problems', JSON.stringify(problems));
-  }, [problems]);
+    if (!isLoggedIn || !username || username === 'admin' || !isProgressLoaded) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const passedCount = Object.values(codingAnswersRef.current).filter(a => a.passed).length;
+        const calculatedScore = parseFloat(((passedCount / (problems.length || 1)) * 10).toFixed(1));
+        
+        await fetch('/api/submissions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username,
+            codingAnswers: codingAnswersRef.current,
+            timeLeft: timeLeftRef.current,
+            isFinished: false,
+            score: calculatedScore
+          })
+        });
+      } catch (e) {
+        console.error("Error heartbeat syncing submission to server:", e);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isLoggedIn, username, isProgressLoaded, problems.length]);
 
   // Handle adding new problem
   const handleAddProblem = async (newProb: CodingProblem) => {
@@ -254,7 +268,7 @@ export default function App() {
     }
   };
 
-  // 4. Persistence in localStorage
+  // 4. Persistence of session states in localStorage
   useEffect(() => {
     safeStorage.setItem('csoj_logged_in', isLoggedIn.toString());
   }, [isLoggedIn]);
@@ -266,14 +280,6 @@ export default function App() {
   useEffect(() => {
     safeStorage.setItem('csoj_language', language);
   }, [language]);
-
-  useEffect(() => {
-    safeStorage.setItem('csoj_time_left', timeLeft.toString());
-  }, [timeLeft]);
-
-  useEffect(() => {
-    safeStorage.setItem('csoj_coding_answers', JSON.stringify(codingAnswers));
-  }, [codingAnswers]);
 
   useEffect(() => {
     safeStorage.setItem('csoj_theme_dark', isDark.toString());
@@ -297,25 +303,62 @@ export default function App() {
     setUsername('');
     safeStorage.removeItem('csoj_logged_in');
     safeStorage.removeItem('csoj_username');
-    handleRestartExam();
+    // Clear exam states immediately
+    setTimeLeft(5400);
+    setCodingAnswers({});
+    setCurrentProblemId('');
+    setActiveTab('home');
   };
 
   // Restart/Reset entire exam state
-  const handleRestartExam = () => {
-    safeStorage.removeItem('csoj_time_left');
-    safeStorage.removeItem('csoj_coding_answers');
+  const handleRestartExam = async () => {
     setTimeLeft(5400);
     setCodingAnswers({});
     setCurrentProblemId(problems[0]?.id || '');
     setActiveTab('home');
+
+    if (isLoggedIn && username && username !== 'admin') {
+      try {
+        await fetch('/api/submissions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username,
+            codingAnswers: {},
+            timeLeft: 5400,
+            isFinished: false,
+            score: 0
+          })
+        });
+      } catch (e) {
+        console.error("Error resetting exam on server:", e);
+      }
+    }
   };
 
   // Reset Coding State only
-  const handleResetCoding = () => {
-    safeStorage.removeItem('csoj_coding_answers');
+  const handleResetCoding = async () => {
     setCodingAnswers({});
     setCurrentProblemId(problems[0]?.id || '');
     setActiveTab('coding');
+
+    if (isLoggedIn && username && username !== 'admin') {
+      try {
+        await fetch('/api/submissions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username,
+            codingAnswers: {},
+            timeLeft,
+            isFinished: false,
+            score: 0
+          })
+        });
+      } catch (e) {
+        console.error("Error resetting coding answers on server:", e);
+      }
+    }
   };
 
   if (!isLoggedIn) {
