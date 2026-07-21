@@ -17,10 +17,6 @@ import {
 } from 'lucide-react';
 import { CodingProblem } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
-import { signOut } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
 
 interface AdminSectionProps {
   problems: CodingProblem[];
@@ -366,8 +362,7 @@ Trả về **true** nếu là số nguyên tố, ngược lại trả về **fal
     setTimeout(() => setNotification(null), 4000);
   };
 
-// Mark the form submission function as async
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!id.trim() || !title.trim()) {
@@ -402,6 +397,7 @@ Trả về **true** nếu là số nguyên tố, ngược lại trả về **fal
         return;
       }
 
+      // Build rawInput string representation, e.g. "nums = [2, 7, 11, 15], target = 9"
       const rawInputParts = finalInputNames.map((name, idx) => {
         const val = check.parsedInput ? check.parsedInput[idx] : undefined;
         return `${name} = ${JSON.stringify(val)}`;
@@ -417,13 +413,32 @@ Trả về **true** nếu là số nguyên tố, ngược lại trả về **fal
 
     let finalDescHtml = description.trim();
 
+    // Automatically generate templates programmatically on submission
     const argsList = finalInputNames.join(', ');
     const pyFn = derivedFnName.replace(/([A-Z])/g, '_$1').toLowerCase();
     
     let finalDefaultCode: { [lang: string]: string } = {
-      python: `def ${pyFn}(${argsList}):\n    """\n    Hãy viết hàm xử lý thuật toán tại đây.\n    """\n    # Viết code của bạn ở đây\n    return None\n`,
-      pascal: `function ${derivedFnName}(${finalInputNames.map(name => `${name}: integer`).join('; ')}): integer;\nvar\n    // Khai báo biến tại đây nếu cần thiết\nbegin\n    // Viết code của bạn ở đây\n    exit(0);\nend;\n`,
-      cpp: `// Thay đổi kiểu dữ liệu trả về và tham số nếu cần thiết\nint ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {\n    // Viết code của bạn ở đây\n    return 0;\n}\n`
+      python: `def ${pyFn}(${argsList}):
+    """
+    Hãy viết hàm xử lý thuật toán tại đây.
+    """
+    # Viết code của bạn ở đây
+    return None
+`,
+      pascal: `function ${derivedFnName}(${finalInputNames.map(name => `${name}: integer`).join('; ')}): integer;
+var
+    // Khai báo biến tại đây nếu cần thiết
+begin
+    // Viết code của bạn ở đây
+    exit(0);
+end;
+`,
+      cpp: `// Thay đổi kiểu dữ liệu trả về và tham số nếu cần thiết
+int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
+    // Viết code của bạn ở đây
+    return 0;
+}
+`
     };
 
     if (editingProblemId) {
@@ -433,7 +448,6 @@ Trả về **true** nếu là số nguyên tố, ngược lại trả về **fal
       }
     }
 
-    // Build the complete problem object
     const newProblem: CodingProblem = {
       id: id.trim(),
       title: title.trim(),
@@ -449,40 +463,24 @@ Trả về **true** nếu là số nguyên tố, ngược lại trả về **fal
       testCases: validatedTestCases
     };
 
-    // --- FIREBASE SAVE LOGIC ---
-    try {
-      // 1. Save document to the 'questions' collection in Firestore
-      const docRef = await addDoc(collection(db, 'questions'), {
-        ...newProblem,
-        createdAt: serverTimestamp()
-      });
-
-      console.log("Firestore Document ID:", docRef.id);
-
-      // 2. Execute local state handlers
-      if (editingProblemId) {
-        onEditProblem(editingProblemId, newProblem);
-        showNotification('success', `Đã cập nhật thành công câu hỏi: "${newProblem.title}"!`);
-      } else {
-        onAddProblem(newProblem);
-        showNotification('success', `Đã lưu câu hỏi vào Firebase & nạp thành công: "${newProblem.title}"!`);
-      }
-
-      // 3. Reset Form
-      setEditingProblemId(null);
-      setTitle('');
-      setDescription('');
-      setEntryFunctionName('');
-      setInputNamesStr('');
-      setConstraints(['Thời gian chạy tối đa: 1.0 giây', 'Bộ nhớ tối đa: 256 MB']);
-      setExamples([]);
-      setTestCases([]);
-      setAdminTab('list');
-
-    } catch (error) {
-      console.error("Error saving question to Firestore:", error);
-      showNotification('error', 'Lỗi khi lưu câu hỏi vào Firebase Firestore.');
+    if (editingProblemId) {
+      onEditProblem(editingProblemId, newProblem);
+      showNotification('success', `Đã cập nhật thành công câu hỏi: "${newProblem.title}"!`);
+    } else {
+      onAddProblem(newProblem);
+      showNotification('success', `Đã nạp thành công câu hỏi mới: "${newProblem.title}"!`);
     }
+    
+    // Reset Form
+    setEditingProblemId(null);
+    setTitle('');
+    setDescription('');
+    setEntryFunctionName('');
+    setInputNamesStr('');
+    setConstraints(['Thời gian chạy tối đa: 1.0 giây', 'Bộ nhớ tối đa: 256 MB']);
+    setExamples([]);
+    setTestCases([]);
+    setAdminTab('list');
   };
 
   return (

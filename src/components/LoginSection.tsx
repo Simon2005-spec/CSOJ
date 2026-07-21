@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Code, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
 
 interface LoginSectionProps {
   onLoginSuccess: (username: string) => void;
@@ -16,8 +14,7 @@ export default function LoginSection({ onLoginSuccess, isDark }: LoginSectionPro
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // 2. Make the handler async to use Firebase Auth
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -28,23 +25,16 @@ export default function LoginSection({ onLoginSuccess, isDark }: LoginSectionPro
 
     setIsLoading(true);
 
-    const normalizedUser = username.trim().toLowerCase();
-    
-    // Automatically convert username to internal email format
-    const internalEmail = `${normalizedUser}@csoj.app`;
-
-    try {
-      // Attempt Firebase login
-      await signInWithEmailAndPassword(auth, internalEmail, password);
-      
-      // Pass original clean username up to parent state
-      onLoginSuccess(normalizedUser);
-    } catch (err: any) {
-      console.error("Login error:", err);
-      setError('Tài khoản hoặc mật khẩu không chính xác. Thử lại với "simon" hoặc "admin".');
-    } finally {
-      setIsLoading(false);
-    }
+    // Simulate network latency
+    setTimeout(() => {
+      const normalizedUser = username.trim().toLowerCase();
+      if ((normalizedUser === 'simon' || normalizedUser === 'admin') && password === '1230') {
+        onLoginSuccess(normalizedUser);
+      } else {
+        setError('Tài khoản hoặc mật khẩu không chính xác. Thử lại với tài khoản "simon" hoặc "admin" với mật khẩu "1230".');
+        setIsLoading(false);
+      }
+    }, 800);
   };
 
   return (
@@ -139,8 +129,8 @@ export default function LoginSection({ onLoginSuccess, isDark }: LoginSectionPro
           {/* Prompt/Guide */}
           <div className="tips-box" style={{ fontSize: '0.825rem', lineHeight: '1.5' }}>
             💡 Gợi ý đăng nhập thử nghiệm:<br />
-            - Học sinh: tài khoản <strong>simon</strong> / mật khẩu <strong>123450</strong><br />
-            - Quản trị viên: tài khoản <strong>admin</strong> / mật khẩu <strong>123450</strong>
+            - Học sinh: tài khoản <strong>simon</strong> / mật khẩu <strong>1230</strong><br />
+            - Quản trị viên: tài khoản <strong>admin</strong> / mật khẩu <strong>1230</strong>
           </div>
 
           {/* Submit Button */}

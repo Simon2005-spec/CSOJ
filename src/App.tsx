@@ -7,8 +7,6 @@ import AdminSection from './components/AdminSection';
 import { CODING_PROBLEMS } from './data/codingProblems';
 import { CodingProblem } from './types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { signOut } from 'firebase/auth';
-import { auth } from './firebaseConfig';
 
 // In-memory fallback dictionary for restricted third-party / sandbox iframes
 const memoryStorage: { [key: string]: string } = {};
@@ -317,23 +315,17 @@ export default function App() {
   };
 
   // Handle Logout
-const handleLogout = async () => {
-  try {
-    await signOut(auth); // Tells Firebase to destroy the auth session
-  } catch (e) {
-    console.error("Firebase sign out error:", e);
-  }
-
-  setIsLoggedIn(false);
-  setUsername('');
-  safeStorage.removeItem('csoj_logged_in');
-  safeStorage.removeItem('csoj_username');
-  // Clear exam states immediately
-  setTimeLeft(5400);
-  setCodingAnswers({});
-  setCurrentProblemId('');
-  setActiveTab('home');
-};
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUsername('');
+    safeStorage.removeItem('csoj_logged_in');
+    safeStorage.removeItem('csoj_username');
+    // Clear exam states immediately
+    setTimeLeft(5400);
+    setCodingAnswers({});
+    setCurrentProblemId('');
+    setActiveTab('home');
+  };
 
   // Restart/Reset entire exam state
   const handleRestartExam = async () => {
@@ -438,7 +430,6 @@ const handleLogout = async () => {
           onLogout={handleLogout}
           language={language}
           setLanguage={setLanguage}
-          onRefreshProblems={fetchProblems}
         />
       )}
 
@@ -465,7 +456,6 @@ const handleLogout = async () => {
                 language={language}
                 setLanguage={setLanguage}
                 onResetCoding={handleResetCoding}
-                onRefreshProblems={fetchProblems}
               />
             </motion.div>
           ) : (

@@ -267,7 +267,7 @@ export default function CodeSection({
     await new Promise((resolve) => setTimeout(resolve, 1200));
 
     try {
-      const results = evaluateCode(latestCodeRef.current, selectedLang, problem, language);
+      const results = await evaluateCode(latestCodeRef.current, selectedLang, problem, language);
       const allPassed = results.every(r => r.passed);
 
       setLastResults(results);
@@ -819,18 +819,19 @@ export default function CodeSection({
 
                           {lastResults[selectedTestcaseIdx].stdout && lastResults[selectedTestcaseIdx].stdout.trim() !== '' && (
                             <div>
-                              <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', fontWeight: 600 }}>
-                                Stdout:
+                              <div style={{ fontSize: '0.6875rem', color: '#60a5fa', marginBottom: '0.25rem', textTransform: 'uppercase', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                <Terminal size={12} />
+                                <span>{language === 'vi' ? 'Nhật ký Debug (stdout / print):' : 'Debug Console Output (stdout / print):'}</span>
                               </div>
                               <pre style={{
-                                background: 'rgba(0,0,0,0.3)',
+                                background: 'rgba(15, 23, 42, 0.6)',
                                 padding: '0.5rem 0.75rem',
                                 borderRadius: '0.375rem',
                                 fontFamily: 'var(--font-mono)',
                                 fontSize: '0.6875rem',
-                                color: 'var(--text-muted)',
+                                color: '#93c5fd',
                                 whiteSpace: 'pre-wrap',
-                                border: '1px dashed rgba(255,255,255,0.08)'
+                                border: '1px solid rgba(59, 130, 246, 0.2)'
                               }}>
                                 {lastResults[selectedTestcaseIdx].stdout}
                               </pre>

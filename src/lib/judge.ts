@@ -46,16 +46,23 @@ export function compareTokens(actualStr: string, expectedStr: string): boolean {
 export function generateStandardInput(inputArgs: any[]): string {
   if (!Array.isArray(inputArgs)) return String(inputArgs);
   
-  const lines: string[] = [];
+  const parts: string[] = [];
   for (const arg of inputArgs) {
     if (Array.isArray(arg)) {
-      lines.push(String(arg.length));
-      lines.push(arg.join(' '));
+      if (arg.length > 0 && Array.isArray(arg[0])) {
+        parts.push(`${arg.length} ${arg[0].length}`);
+        for (const row of arg) {
+          parts.push(row.join(' '));
+        }
+      } else {
+        parts.push(String(arg.length));
+        parts.push(arg.join(' '));
+      }
     } else if (arg !== null && arg !== undefined) {
-      lines.push(String(arg));
+      parts.push(String(arg));
     }
   }
-  return lines.join('\n');
+  return parts.join(' ');
 }
 
 // -------------------------------------------------------------
@@ -197,7 +204,7 @@ export function transpilePythonToJS(code: string, entryFnName: string): string {
   let transpiled = resultLines.join('\n');
 
   // Handle multiple assignments: a, b = b, a
-  transpiled = transpiled.replace(/^(\s*)([a-zA-Z0-9_]+)\s*,\s*([a-zA-Z0-9_]+)\s*=\s*(.*);/gm, '$1[$2, $3] = $4;');
+  transpiled = transpiled.replace(/^(\s*)([a-zA-Z0-9_]+)\s*,\s*([a-zA-Z0-9_]+)\s*=\s*(.*);/gm, '$1let [$2, $3] = $4;');
 
   return transpiled;
 }
@@ -214,10 +221,10 @@ export function transpileCppToJS(code: string, entryFnName: string): string {
   clean = clean.replace(/std::/g, '');
 
   // Convert main function: int main(...) -> function main()
-  clean = clean.replace(/\b(int|void)\s+main\s*\(([^)]*)\)/g, 'function main()');
+  clean = clean.replace(/\b(int|void|long|long\s+long)\s+main\s*\(([^)]*)\)/g, 'function main()');
   
   // Convert standard types to general signatures
-  clean = clean.replace(/(vector<[a-zA-Z0-9_<>]+>|int|bool|void|string|char|double|float)\s+([a-zA-Z0-9_]+)\s*\(([^)]*)\)\s*\{/g, 'function $2($3) {');
+  clean = clean.replace(/(vector<[a-zA-Z0-9_<>]+>|int|long\s+long|long|bool|void|string|char|double|float)\s+([a-zA-Z0-9_]+)\s*\(([^)]*)\)[\s\r\n]*\{/g, 'function $2($3) {');
   
   // Argument types cleanup, e.g. (vector<int>& nums, int target) -> (nums, target)
   clean = clean.replace(/function\s+([a-zA-Z0-9_]+)\s*\(([^)]*)\)/g, (match, fnName, argsStr) => {
@@ -537,12 +544,40 @@ export function cleanAndCompare(actual: any, expected: any): boolean {
 // -------------------------------------------------------------
 // 4. UNIFIED EVALUATOR
 // -------------------------------------------------------------
-export const evaluateCode = (
+export const evaluateCode = async (
   code: string,
   lang: 'cpp' | 'python' | 'pascal',
   problem: CodingProblem,
   language: 'vi' | 'en' = 'vi'
-): TestResult[] => {
+): Promise<TestResult[]> => {
+  // 1. Try real server API endpoint /api/judge for 100% native execution
+  try {
+    const res = await fetch('/api/judge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        language: lang,
+        problem,
+        uiLanguage: language
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.isCompileError) {
+        throw new Error(data.compileError || 'Compilation Error');
+      }
+      if (Array.isArray(data.results)) {
+        return data.results;
+      }
+    }
+  } catch (err: any) {
+    if (err.message && (err.message.includes('Compilation Error') || err.message.includes('CE'))) {
+      throw err;
+    }
+    console.warn("⚠️ Server judge API unavailable, using client fallback engine:", err);
+  }
+
   const results: TestResult[] = [];
   const entryFnName = problem.entryFunctionName;
   const snakeCaseEntryFnName = entryFnName.replace(/([A-Z])/g, "_$1").toLowerCase();
@@ -819,6 +854,7 @@ export const evaluateCode = (
       let duration = 0;
       let verdict: 'AC' | 'WA' | 'TLE' | 'RTE' = 'AC';
       let errorMessage = '';
+      let actualValDisplay = '';
 
       try {
         const wrapperFn = new Function(
@@ -884,8 +920,28 @@ export const evaluateCode = (
           }
 
           function print(...args) {
-            _stdout_buffer.push(args.map(x => (x === null ? 'None' : (x === true ? 'True' : (x === false ? 'False' : String(x))))).join(" ") + "\\n");
+            let sep = " ";
+            let end = "\\n";
+            const cleanArgs = [];
+            for (const arg of args) {
+              if (typeof arg === 'string' && arg.startsWith('__kw_sep=')) {
+                sep = arg.slice(9);
+              } else if (typeof arg === 'string' && arg.startsWith('__kw_end=')) {
+                end = arg.slice(9);
+              } else {
+                cleanArgs.push(arg);
+              }
+            }
+            const parts = cleanArgs.map(x => (x === null ? 'None' : (x === true ? 'True' : (x === false ? 'False' : (typeof x === 'object' ? JSON.stringify(x) : String(x))))));
+            _stdout_buffer.push(parts.join(sep) + end);
           }
+
+          const console = {
+            log: print,
+            info: print,
+            warn: print,
+            error: print
+          };
 
           function _reverse_slice(x) {
             if (typeof x === 'string') return x.split('').reverse().join('');
@@ -1482,18 +1538,39 @@ export const evaluateCode = (
             const val = parseFloat(x);
             return isNaN(val) ? 0.0 : val;
           };
-
-          ${jsCode}
+          const map = (fn, iter) => {
+            if (!iter) return [];
+            const arr = Array.from(iter);
+            return typeof fn === 'function' ? arr.map(fn) : arr;
+          };
+          const filter = (fn, iter) => {
+            if (!iter) return [];
+            const arr = Array.from(iter);
+            return typeof fn === 'function' ? arr.filter(fn) : arr;
+          };
+          const chr = (code) => String.fromCharCode(code);
+          const ord = (ch) => (typeof ch === 'string' && ch.length > 0 ? ch.charCodeAt(0) : 0);
+          const reversed = (iter) => Array.from(iter).reverse();
 
           _init_stdin(runContext.rawStdin);
+
+          ${jsCode}
 
           let retVal = undefined;
           if (typeof main === 'function') {
             retVal = main();
           } else if (typeof ${entryFnName} === 'function') {
-            retVal = ${entryFnName}(...runContext.args);
+            try {
+              retVal = ${entryFnName}(...runContext.args);
+            } catch (e) {
+              retVal = ${entryFnName}();
+            }
           } else if (typeof ${snakeCaseEntryFnName} === 'function') {
-            retVal = ${snakeCaseEntryFnName}(...runContext.args);
+            try {
+              retVal = ${snakeCaseEntryFnName}(...runContext.args);
+            } catch (e) {
+              retVal = ${snakeCaseEntryFnName}();
+            }
           }
 
           return {
@@ -1513,18 +1590,41 @@ export const evaluateCode = (
         const stdoutTrimmed = stdoutStr.trim();
         const expectedStr = Array.isArray(tc.expected) ? tc.expected.join(' ') : String(tc.expected);
 
-        if (stdoutTrimmed !== '') {
-          passed = compareTokens(stdoutStr, expectedStr);
-          if (!passed && typeof tc.expected === 'boolean') {
-            passed = compareTokens(stdoutStr, tc.expected ? 'true' : 'false');
-          }
-        } else {
-          passed = cleanAndCompare(output, tc.expected);
-          if (!passed) {
-            const actualRetStr = Array.isArray(output) ? output.join(' ') : String(output ?? '');
-            passed = compareTokens(actualRetStr, expectedStr);
+        actualValDisplay = '';
+
+        let passedByReturn = false;
+        let passedByStdout = false;
+
+        if (output !== undefined && output !== null) {
+          passedByReturn = cleanAndCompare(output, tc.expected);
+          if (!passedByReturn) {
+            const actualRetStr = Array.isArray(output) ? output.join(' ') : (typeof output === 'object' ? JSON.stringify(output) : String(output));
+            passedByReturn = compareTokens(actualRetStr, expectedStr);
           }
         }
+
+        if (stdoutTrimmed !== '') {
+          passedByStdout = compareTokens(stdoutStr, expectedStr);
+          if (!passedByStdout && typeof tc.expected === 'boolean') {
+            passedByStdout = compareTokens(stdoutStr, tc.expected ? 'true' : 'false');
+          }
+          if (!passedByStdout) {
+            passedByStdout = cleanAndCompare(stdoutTrimmed, tc.expected);
+          }
+        }
+
+        passed = passedByReturn || passedByStdout;
+
+        if (passedByReturn && (output !== undefined && output !== null)) {
+          actualValDisplay = typeof output === 'object' ? JSON.stringify(output) : String(output);
+        } else if (stdoutTrimmed !== '') {
+          actualValDisplay = stdoutTrimmed;
+        } else if (output !== undefined && output !== null) {
+          actualValDisplay = typeof output === 'object' ? JSON.stringify(output) : String(output);
+        } else {
+          actualValDisplay = '(Output rỗng / Empty)';
+        }
+
         verdict = passed ? 'AC' : 'WA';
       } catch (e: any) {
         if (e.message && e.message.includes('TLE:')) {
@@ -1552,13 +1652,13 @@ export const evaluateCode = (
       let detailMsg = '';
       if (verdict === 'AC') {
         detailMsg = language === 'vi' 
-          ? `👉 Kết quả: ${stdoutStr.trim() !== '' ? stdoutStr.trim() : JSON.stringify(output)} (Khớp với đáp án)`
-          : `👉 Result: ${stdoutStr.trim() !== '' ? stdoutStr.trim() : JSON.stringify(output)} (Matches expected)`;
+          ? `👉 Kết quả: ${actualValDisplay || '(True)'} (Khớp với đáp án)`
+          : `👉 Result: ${actualValDisplay || '(True)'} (Matches expected)`;
       } else if (verdict === 'WA') {
         const expectedStr = Array.isArray(tc.expected) ? tc.expected.join(' ') : String(tc.expected);
         detailMsg = language === 'vi'
-          ? `👉 Đầu ra: ${stdoutStr.trim() !== '' ? stdoutStr.trim() : JSON.stringify(output)} | Kỳ vọng: ${expectedStr}`
-          : `👉 Output: ${stdoutStr.trim() !== '' ? stdoutStr.trim() : JSON.stringify(output)} | Expected: ${expectedStr}`;
+          ? `👉 Đầu ra: ${actualValDisplay || '(Rỗng)'} | Kỳ vọng: ${expectedStr}`
+          : `👉 Output: ${actualValDisplay || '(Empty)'} | Expected: ${expectedStr}`;
       } else {
         detailMsg = `⚠️ Chi tiết: ${errorMessage}`;
       }
@@ -1569,12 +1669,12 @@ export const evaluateCode = (
 
       results.push({
         passed,
-        output: stdoutStr.trim() !== '' ? stdoutStr : output,
+        output: output !== undefined && output !== null ? output : stdoutStr,
         message: `${header}\n${subheader}\n${footer}`,
         verdict,
         input: tc.rawInput || rawStdin,
         expected: Array.isArray(tc.expected) ? tc.expected.join(' ') : String(tc.expected),
-        actual: stdoutStr.trim() !== '' ? stdoutStr.trim() : (output !== undefined && output !== null ? (typeof output === 'object' ? JSON.stringify(output) : String(output)) : ''),
+        actual: actualValDisplay,
         stdout: stdoutStr,
         time: timeStr,
         memory: memStr
