@@ -1,0 +1,28 @@
+{
+  "entities": {
+    "submissions": {
+      "title": "Submissions",
+      "description": "User code submissions and judge results",
+      "properties": {
+        "userId": { "type": "string" },
+        "problemId": { "type": "string" },
+        "language": { "type": "string" },
+        "code": { "type": "string" },
+        "verdict": { "type": "string" },
+        "passedCases": { "type": "number" },
+        "totalCases": { "type": "number" },
+        "createdAt": { "type": "string" }
+      }
+    },
+    "users": {
+      "title": "Users",
+      "description": "User profile data",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "rating": { "type": "number" },
+        "solvedProblems": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

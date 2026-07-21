@@ -467,49 +467,58 @@ app.post("/api/judge", async (req, res) => {
         let stdout = (proc.stdout || '').trim();
         let stderr = (proc.stderr || '').trim();
 
-        if (proc.error) {
-          if ((proc.error as any).code === 'ETIMEDOUT') {
-            verdict = 'TLE';
-            errorMessage = uiLanguage === 'vi' ? 'Quá thời hạn chạy (2000ms)' : 'Time Limit Exceeded (2000ms)';
-          } else {
-            verdict = 'RTE';
-            errorMessage = proc.error.message;
-          }
-        } else if (proc.status !== 0) {
+      if (proc.error) {
+        if ((proc.error as any).code === 'ETIMEDOUT') {
+          verdict = 'TLE';
+          errorMessage = uiLanguage === 'vi' ? 'Quá thời hạn chạy (2000ms)' : 'Time Limit Exceeded (2000ms)';
+        } else {
+          verdict = 'RTE';
+          errorMessage = proc.error.message;
+        }
+      } else if (proc.status !== 0) {
+        if (stderr.includes('SyntaxError')) {
+          verdict = 'CE';
+          errorMessage = stderr;
+        } else {
           verdict = 'RTE';
           errorMessage = stderr || `Process exited with code ${proc.status}`;
-        } else {
-          const passed = compareTokens(stdout, expectedStr);
-          verdict = passed ? 'AC' : 'WA';
         }
+      } else {
+        const passed = compareTokens(stdout, expectedStr);
+        verdict = passed ? 'AC' : 'WA';
+      }
 
-        const passed = verdict === 'AC';
-        const memStr = `${(1.5 + Math.random() * 1.2).toFixed(1)} MB`;
-        const timeStr = `${duration} ms`;
+      const passed = verdict === 'AC';
+      const memStr = `${(1.5 + Math.random() * 1.2).toFixed(1)} MB`;
+      const timeStr = `${duration} ms`;
 
-        summaryData.push({ idx: idx + 1, verdict, time: timeStr, memory: memStr, passed });
+      summaryData.push({ idx: idx + 1, verdict, time: timeStr, memory: memStr, passed });
 
-        let detailMsg = '';
-        if (verdict === 'AC') {
-          detailMsg = uiLanguage === 'vi' ? `👉 Kết quả: ${stdout} (Khớp đáp án)` : `👉 Result: ${stdout} (Matches expected)`;
-        } else if (verdict === 'WA') {
-          detailMsg = uiLanguage === 'vi' ? `👉 Đầu ra: ${stdout || '(Rỗng)'} | Kỳ vọng: ${expectedStr}` : `👉 Output: ${stdout || '(Empty)'} | Expected: ${expectedStr}`;
-        } else {
-          detailMsg = `⚠️ Error: ${errorMessage}`;
-        }
+      let detailMsg = '';
+      if (verdict === 'AC') {
+        detailMsg = uiLanguage === 'vi' ? `👉 Kết quả: ${stdout} (Khớp đáp án)` : `👉 Result: ${stdout} (Matches expected)`;
+      } else if (verdict === 'WA') {
+        detailMsg = uiLanguage === 'vi' ? `👉 Đầu ra: ${stdout || '(Rỗng)'} | Kỳ vọng: ${expectedStr}` : `👉 Output: ${stdout || '(Empty)'} | Expected: ${expectedStr}`;
+      } else {
+        detailMsg = `⚠️ Error: ${errorMessage}`;
+      }
 
-        results.push({
-          passed,
-          output: stdout || stderr,
-          message: `[${verdict}] Testcase ${idx + 1} (${timeStr} | ${memStr})\n   • Input: ${tc.rawInput || stdinInput.replace(/\n/g, ' ')}\n   • ${detailMsg}`,
-          verdict,
-          input: tc.rawInput || stdinInput,
-          expected: expectedStr,
-          actual: stdout || '(Empty)',
-          stdout,
-          time: timeStr,
-          memory: memStr
-        });
+      const displayActual = verdict === 'AC' || verdict === 'WA' 
+        ? (stdout || '(Rỗng)') 
+        : (stderr || errorMessage || 'Lỗi thực thi / cú pháp');
+
+      results.push({
+        passed,
+        output: stdout || stderr || errorMessage,
+        message: `[${verdict}] Testcase ${idx + 1} (${timeStr} | ${memStr})\n   • Input: ${tc.rawInput || stdinInput.replace(/\n/g, ' ')}\n   • ${detailMsg}`,
+        verdict,
+        input: tc.rawInput || stdinInput,
+        expected: expectedStr,
+        actual: displayActual,
+        stdout,
+        time: timeStr,
+        memory: memStr
+      });
       }
     }
 
@@ -669,14 +678,18 @@ int main() {
           detailMsg = `⚠️ Error: ${errorMessage}`;
         }
 
+        const displayActual = verdict === 'AC' || verdict === 'WA' 
+          ? (stdout || '(Rỗng)') 
+          : (stderr || errorMessage || 'Lỗi thực thi');
+
         results.push({
           passed,
-          output: stdout || stderr,
+          output: stdout || stderr || errorMessage,
           message: `[${verdict}] Testcase ${idx + 1} (${timeStr} | ${memStr})\n   • Input: ${tc.rawInput || stdinInput.replace(/\n/g, ' ')}\n   • ${detailMsg}`,
           verdict,
           input: tc.rawInput || stdinInput,
           expected: expectedStr,
-          actual: stdout || '(Empty)',
+          actual: displayActual,
           stdout,
           time: timeStr,
           memory: memStr
@@ -792,14 +805,18 @@ end.`;
 
         summaryData.push({ idx: idx + 1, verdict, time: timeStr, memory: memStr, passed });
 
+        const displayActual = verdict === 'AC' || verdict === 'WA' 
+          ? (stdout || '(Rỗng)') 
+          : (stderr || errorMessage || 'Lỗi thực thi');
+
         results.push({
           passed,
-          output: stdout || stderr,
+          output: stdout || stderr || errorMessage,
           message: `[${verdict}] Testcase ${idx + 1} (${timeStr} | ${memStr})\n   • Input: ${tc.rawInput || stdinInput.replace(/\n/g, ' ')}\n   • Result: ${stdout}`,
           verdict,
           input: tc.rawInput || stdinInput,
           expected: expectedStr,
-          actual: stdout || '(Empty)',
+          actual: displayActual,
           stdout,
           time: timeStr,
           memory: memStr
