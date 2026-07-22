@@ -495,8 +495,22 @@ int ${derivedFnName}(${finalInputNames.map(name => `int ${name}`).join(', ')}) {
             <h1 className="problem-title" style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Tài Khoản Quản Trị NHCOJ</h1>
           </div>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            Quản lý các câu hỏi trong đề thi lập trình, thêm bớt bài toán, và tối ưu hóa bộ testcase kiểm thử.
+            Quản lý câu hỏi thi đấu, cập nhật bộ testcase và đồng bộ dữ liệu thời gian thực trên Firestore Cloud.
           </p>
+          <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', padding: '0.25rem 0.625rem', borderRadius: '1rem', fontWeight: 600, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+              Hệ Thống Tự Động Đồng Bộ Dữ Liệu Realtime (Active)
+            </span>
+            <a 
+              href="https://console.firebase.google.com/project/iconic-caldron-f7krv/firestore/databases/ai-studio-csoj-42055485-0df2-442c-a19b-74afb9f5489f/data" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ fontSize: '0.75rem', color: '#3b82f6', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+            >
+              🔗 Mở Trang Quản Lý Firestore Console
+            </a>
+          </div>
         </div>
         <button 
           onClick={onLogout} 

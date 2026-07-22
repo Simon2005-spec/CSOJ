@@ -74,15 +74,83 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
-// --- ROBUST FALLBACK DATA STORE ---
-// In-memory arrays initialized with default CODING_PROBLEMS
-let inMemoryProblems: CodingProblem[] = [...CODING_PROBLEMS];
-let inMemorySubmissions: { [username: string]: any } = {};
+// --- ROBUST DISK & FALLBACK DATA STORE ---
+const PROBLEMS_FILE = path.join(process.cwd(), "data", "problems_store.json");
+const SUBMISSIONS_FILE = path.join(process.cwd(), "data", "submissions_store.json");
+
+function loadProblemsFromDisk(): CodingProblem[] {
+  try {
+    if (fs.existsSync(PROBLEMS_FILE)) {
+      const data = fs.readFileSync(PROBLEMS_FILE, "utf-8");
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn("Could not read problems from disk:", e);
+  }
+  return [...CODING_PROBLEMS];
+}
+
+function saveProblemsToDisk(probs: CodingProblem[]) {
+  try {
+    const dir = path.dirname(PROBLEMS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(PROBLEMS_FILE, JSON.stringify(probs, null, 2), "utf-8");
+  } catch (e) {
+    console.warn("Could not save problems to disk:", e);
+  }
+}
+
+function loadSubmissionsFromDisk(): { [username: string]: any } {
+  try {
+    if (fs.existsSync(SUBMISSIONS_FILE)) {
+      const data = fs.readFileSync(SUBMISSIONS_FILE, "utf-8");
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === "object") {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn("Could not read submissions from disk:", e);
+  }
+  return {};
+}
+
+function saveSubmissionsToDisk(subs: { [username: string]: any }) {
+  try {
+    const dir = path.dirname(SUBMISSIONS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(SUBMISSIONS_FILE, JSON.stringify(subs, null, 2), "utf-8");
+  } catch (e) {
+    console.warn("Could not save submissions to disk:", e);
+  }
+}
+
+// In-memory arrays initialized with disk store fallback
+let inMemoryProblems: CodingProblem[] = loadProblemsFromDisk();
+let inMemorySubmissions: { [username: string]: any } = loadSubmissionsFromDisk();
 let useDatabase = true; // Will dynamically fall back to false if database is not available
 
 function checkFirestoreError(err: any) {
-  if (err && (err.code === 5 || (err.message && (err.message.includes("NOT_FOUND") || err.message.includes("does not exist"))))) {
-    console.warn("⚠️ Firestore database NOT_FOUND. Disabling Firestore and switching to PG/Memory.");
+  if (err && (
+    err.code === 5 || 
+    err.code === 7 || 
+    err.code === 16 ||
+    (err.message && (
+      err.message.includes("NOT_FOUND") || 
+      err.message.includes("does not exist") ||
+      err.message.includes("PERMISSION_DENIED") ||
+      err.message.includes("Missing or insufficient permissions") ||
+      err.message.includes("UNAUTHENTICATED")
+    ))
+  )) {
+    console.warn(`⚠️ Firestore access error (${err.code || err.message}). Disabling Firestore and switching seamlessly to Postgres/Memory.`);
     disableFirestore();
   }
 }
@@ -96,17 +164,19 @@ function checkFirestoreError(err: any) {
       const snapshot = await problemsColl.get();
       if (snapshot.empty) {
         console.log("🔥 Firestore is empty, seeding standard coding problems...");
-        for (const prob of CODING_PROBLEMS) {
+        for (const prob of inMemoryProblems) {
           await problemsColl.doc(prob.id).set(prob);
         }
         console.log("🔥 Firestore seeding complete.");
-        inMemoryProblems = [...CODING_PROBLEMS];
       } else {
         const decodedProbs: CodingProblem[] = [];
         snapshot.forEach(doc => {
           decodedProbs.push(doc.data() as CodingProblem);
         });
-        inMemoryProblems = decodedProbs;
+        if (decodedProbs.length > 0) {
+          inMemoryProblems = decodedProbs;
+          saveProblemsToDisk(inMemoryProblems);
+        }
         console.log(`🔥 Firestore initialized. Loaded ${decodedProbs.length} coding problems.`);
       }
     } catch (err: any) {
@@ -120,17 +190,15 @@ function checkFirestoreError(err: any) {
     const dbProbs = await db.select().from(dbProblems);
     if (dbProbs.length === 0) {
       console.log("Database is empty, seeding standard coding problems to PG...");
-      for (const prob of CODING_PROBLEMS) {
+      for (const prob of inMemoryProblems) {
         await db.insert(dbProblems).values(serializeProblem(prob));
       }
       console.log("PG Seeding complete.");
-      if (!useFirestore) {
-        inMemoryProblems = [...CODING_PROBLEMS];
-      }
     } else {
       console.log(`PG Database initialized. Loaded ${dbProbs.length} coding problems.`);
       if (!useFirestore) {
         inMemoryProblems = dbProbs.map(deserializeProblem);
+        saveProblemsToDisk(inMemoryProblems);
       }
     }
   } catch (err) {
@@ -180,13 +248,14 @@ app.post("/api/problems", async (req, res) => {
       return res.status(400).json({ error: "Invalid problem structure" });
     }
 
-    // Always update in memory store immediately
+    // Always update in memory store immediately and persist to disk
     const existingIdx = inMemoryProblems.findIndex(p => p.id === newProb.id);
     if (existingIdx !== -1) {
       inMemoryProblems[existingIdx] = newProb;
     } else {
       inMemoryProblems.push(newProb);
     }
+    saveProblemsToDisk(inMemoryProblems);
 
     // Save to Firestore
     if (useFirestore && dbFirestore) {
@@ -228,6 +297,7 @@ app.delete("/api/problems/:id", async (req, res) => {
   try {
     const id = req.params.id;
     inMemoryProblems = inMemoryProblems.filter(p => p.id !== id);
+    saveProblemsToDisk(inMemoryProblems);
 
     // Delete from Firestore
     if (useFirestore && dbFirestore) {
@@ -347,8 +417,9 @@ app.post("/api/submissions", async (req, res) => {
       updatedAt: new Date().toISOString()
     };
 
-    // Always update in-memory immediately
+    // Always update in-memory immediately and persist to disk
     inMemorySubmissions[normUser] = memoryPayload;
+    saveSubmissionsToDisk(inMemorySubmissions);
 
     // Save to Firestore
     if (useFirestore && dbFirestore) {

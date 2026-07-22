@@ -103,11 +103,11 @@ export default function App() {
     }
   };
 
-  // Fetch problems on mount and periodically (lower frequency to protect DB connections)
+  // Fetch problems on mount and periodically to sync across devices/users
   useEffect(() => {
     fetchProblems();
-    // Poll every 25 seconds to synchronize new/edited problems automatically across sessions
-    const interval = setInterval(fetchProblems, 25000);
+    // Poll every 5 seconds to synchronize new/edited problems automatically across sessions
+    const interval = setInterval(fetchProblems, 5000);
     return () => clearInterval(interval);
   }, []);
 
