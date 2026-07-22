@@ -11,9 +11,8 @@ import { dbFirestore, useFirestore, disableFirestore } from "./src/db/firebase.t
 import { problems as dbProblems, submissions as dbSubmissions } from "./src/db/schema.ts";
 import { eq } from "drizzle-orm";
 
-// Setup __dirname and __filename for ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Setup safe dirname for ESM & CJS compatibility
+const safeDirname = typeof __dirname !== "undefined" ? __dirname : process.cwd();
 
 // Helper functions for serializing/deserializing problems
 function serializeProblem(p: CodingProblem) {
