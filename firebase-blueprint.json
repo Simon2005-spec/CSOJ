@@ -1,28 +1,48 @@
 {
   "entities": {
+    "problems": {
+      "title": "Problems",
+      "description": "Coding problems for the exam",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "descriptionHtml": { "type": "string" },
+        "inputFormat": { "type": "string" },
+        "outputFormat": { "type": "string" },
+        "entryFunctionName": { "type": "string" },
+        "examples": { "type": "array" },
+        "constraints": { "type": "array" },
+        "inputNames": { "type": "array" },
+        "defaultCode": { "type": "object" },
+        "testCases": { "type": "array" }
+      },
+      "required": ["id", "title"]
+    },
     "submissions": {
       "title": "Submissions",
-      "description": "User code submissions and judge results",
+      "description": "User exam progress and scores",
+      "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "problemId": { "type": "string" },
-        "language": { "type": "string" },
-        "code": { "type": "string" },
-        "verdict": { "type": "string" },
-        "passedCases": { "type": "number" },
-        "totalCases": { "type": "number" },
-        "createdAt": { "type": "string" }
-      }
+        "username": { "type": "string" },
+        "codingAnswers": { "type": "object" },
+        "timeLeft": { "type": "number" },
+        "isFinished": { "type": "boolean" },
+        "score": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["username"]
+    }
+  },
+  "firestore": {
+    "problems": {
+      "schema": "problems",
+      "description": "Collection of coding problems"
     },
-    "users": {
-      "title": "Users",
-      "description": "User profile data",
-      "properties": {
-        "displayName": { "type": "string" },
-        "email": { "type": "string" },
-        "rating": { "type": "number" },
-        "solvedProblems": { "type": "array", "items": { "type": "string" } }
-      }
+    "submissions": {
+      "schema": "submissions",
+      "description": "Collection of user submissions"
     }
   }
 }

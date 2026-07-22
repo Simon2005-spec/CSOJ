@@ -7,7 +7,7 @@ import { createServer as createViteServer } from "vite";
 import { CODING_PROBLEMS } from "./src/data/codingProblems.ts";
 import { CodingProblem } from "./src/types.ts";
 import { db } from "./src/db/index.ts";
-import { dbFirestore, useFirestore, disableFirestore } from "./src/db/firebase.ts";
+import { getDbFirestore, useFirestore, disableFirestore } from "./src/db/firebase.ts";
 import { problems as dbProblems, submissions as dbSubmissions } from "./src/db/schema.ts";
 import { eq } from "drizzle-orm";
 
@@ -59,6 +59,8 @@ function deserializeSubmission(sub: any) {
     updatedAt: sub.updatedAt
   };
 }
+
+import { transpileCppToJS, transpilePascalToJS, TRANSPILER_HELPERS } from "./src/lib/transpiler";
 
 const app = express();
 const PORT = 3000;
@@ -139,26 +141,26 @@ let useDatabase = true; // Will dynamically fall back to false if database is no
 
 function checkFirestoreError(err: any) {
   if (err && (
-    err.code === 5 || 
+    err.code === 5 || // NOT_FOUND (Database not found)
     err.code === 7 || 
     err.code === 16 ||
     (err.message && (
-      err.message.includes("NOT_FOUND") || 
-      err.message.includes("does not exist") ||
-      err.message.includes("PERMISSION_DENIED") ||
+      err.message.includes("NOT_FOUND") ||
+      err.message.includes("PERMISSION_DENIED") || 
       err.message.includes("Missing or insufficient permissions") ||
       err.message.includes("UNAUTHENTICATED")
     ))
   )) {
-    console.warn(`⚠️ Firestore access error (${err.code || err.message}). Disabling Firestore and switching seamlessly to Postgres/Memory.`);
+    console.warn(`⚠️ Firestore access error (${err.code || err.message}). Disabling Firestore for this session.`);
     disableFirestore();
   }
 }
 
 // Seed the database if empty (non-blocking)
 (async () => {
+  const dbFirestore = await getDbFirestore();
   // 1. First try Firestore seeding and loading
-  if (useFirestore && dbFirestore) {
+  if (dbFirestore) {
     try {
       const problemsColl = dbFirestore.collection("problems");
       const snapshot = await problemsColl.get();
@@ -196,7 +198,7 @@ function checkFirestoreError(err: any) {
       console.log("PG Seeding complete.");
     } else {
       console.log(`PG Database initialized. Loaded ${dbProbs.length} coding problems.`);
-      if (!useFirestore) {
+      if (!dbFirestore) {
         inMemoryProblems = dbProbs.map(deserializeProblem);
         saveProblemsToDisk(inMemoryProblems);
       }
@@ -211,7 +213,8 @@ function checkFirestoreError(err: any) {
 
 // 1. Get all problems
 app.get("/api/problems", async (req, res) => {
-  if (useFirestore && dbFirestore) {
+  const dbFirestore = await getDbFirestore();
+  if (dbFirestore) {
     try {
       const snapshot = await dbFirestore.collection("problems").get();
       const decodedProbs: CodingProblem[] = [];
@@ -258,7 +261,8 @@ app.post("/api/problems", async (req, res) => {
     saveProblemsToDisk(inMemoryProblems);
 
     // Save to Firestore
-    if (useFirestore && dbFirestore) {
+    const dbFirestore = await getDbFirestore();
+    if (dbFirestore) {
       try {
         await dbFirestore.collection("problems").doc(newProb.id).set(newProb);
         console.log(`🔥 Successfully saved/updated problem ID: ${newProb.id} in Firestore`);
@@ -300,7 +304,8 @@ app.delete("/api/problems/:id", async (req, res) => {
     saveProblemsToDisk(inMemoryProblems);
 
     // Delete from Firestore
-    if (useFirestore && dbFirestore) {
+    const dbFirestore = await getDbFirestore();
+    if (dbFirestore) {
       try {
         await dbFirestore.collection("problems").doc(id).delete();
         console.log(`🔥 Successfully deleted problem ID: ${id} from Firestore`);
@@ -330,7 +335,8 @@ app.delete("/api/problems/:id", async (req, res) => {
 
 // 4. Get all submissions (for leaderboard/admin grading dashboard)
 app.get("/api/submissions", async (req, res) => {
-  if (useFirestore && dbFirestore) {
+  const dbFirestore = await getDbFirestore();
+  if (dbFirestore) {
     try {
       const snapshot = await dbFirestore.collection("submissions").get();
       const result: { [username: string]: any } = {};
@@ -365,7 +371,8 @@ app.get("/api/submissions", async (req, res) => {
 // 5. Get a specific user's submission state
 app.get("/api/submissions/:username", async (req, res) => {
   const username = req.params.username.toLowerCase();
-  if (useFirestore && dbFirestore) {
+  const dbFirestore = await getDbFirestore();
+  if (dbFirestore) {
     try {
       const doc = await dbFirestore.collection("submissions").doc(username).get();
       if (doc.exists) {
@@ -422,7 +429,8 @@ app.post("/api/submissions", async (req, res) => {
     saveSubmissionsToDisk(inMemorySubmissions);
 
     // Save to Firestore
-    if (useFirestore && dbFirestore) {
+    const dbFirestore = await getDbFirestore();
+    if (dbFirestore) {
       try {
         await dbFirestore.collection("submissions").doc(normUser).set(memoryPayload);
         console.log(`🔥 Successfully saved submission for ${normUser} to Firestore`);
@@ -477,6 +485,60 @@ app.post("/api/judge", async (req, res) => {
     const tmpDir = path.join("/tmp", `dmoj_judge_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`);
     fs.mkdirSync(tmpDir, { recursive: true });
 
+    // Format test case input into standard input string, cleaning any variable labels like s = "ex"
+    const formatTcInputToStdin = (inputData: any): string => {
+      if (inputData === null || inputData === undefined) return '';
+
+      let raw = '';
+      if (typeof inputData === 'string') {
+        raw = inputData;
+      } else if (Array.isArray(inputData)) {
+        if (inputData.length === 1 && typeof inputData[0] === 'string' && inputData[0].includes('\n')) {
+          raw = inputData[0];
+        } else {
+          raw = inputData.map(item => {
+            if (Array.isArray(item)) return item.join(' ');
+            if (typeof item === 'object' && item !== null) return JSON.stringify(item);
+            return String(item);
+          }).join(' ');
+        }
+      } else {
+        raw = String(inputData);
+      }
+
+      if (/\b[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*/.test(raw)) {
+        // Split by comma OR newline if followed by "var ="
+        const parts = raw.split(/(?:,|\n)\s*(?=[a-zA-Z_][a-zA-Z0-9_]*\s*=)/);
+        const cleanedTokens: string[] = [];
+        for (const part of parts) {
+          const eqIdx = part.indexOf('=');
+          if (eqIdx !== -1) {
+            let valStr = part.slice(eqIdx + 1).trim();
+            if ((valStr.startsWith('"') && valStr.endsWith('"')) || (valStr.startsWith("'") && valStr.endsWith("'"))) {
+              valStr = valStr.slice(1, -1);
+            } else if (valStr.startsWith('[') && valStr.endsWith(']')) {
+              try {
+                const arr = JSON.parse(valStr);
+                if (Array.isArray(arr)) {
+                  valStr = arr.join(' ');
+                }
+              } catch (e) {}
+            }
+            cleanedTokens.push(valStr);
+          } else {
+            cleanedTokens.push(part.trim());
+          }
+        }
+        return cleanedTokens.join(' ');
+      }
+
+      if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+        return raw.slice(1, -1);
+      }
+
+      return raw;
+    };
+
     // Official ICPC / DMOJ Token Comparator
     const compareTokens = (actStr: string, expStr: string) => {
       const actTokens = actStr.trim().split(/\s+/).filter(Boolean);
@@ -513,14 +575,7 @@ app.post("/api/judge", async (req, res) => {
 
       for (let idx = 0; idx < testCases.length; idx++) {
         const tc = testCases[idx];
-        let stdinInput = '';
-        if (typeof tc.input === 'string') {
-          stdinInput = tc.input;
-        } else if (Array.isArray(tc.input)) {
-          stdinInput = tc.input.map((x: any) => Array.isArray(x) ? x.join(' ') : String(x)).join(' ');
-        } else {
-          stdinInput = String(tc.input ?? '');
-        }
+        const stdinInput = formatTcInputToStdin(tc.input) || (tc.rawInput ? formatTcInputToStdin(tc.rawInput) : '');
 
         const expectedStr = Array.isArray(tc.expected) ? tc.expected.join(' ') : String(tc.expected);
 
@@ -665,106 +720,163 @@ int main() {
 
       fs.writeFileSync(srcPath, cppCode);
 
-      const compileProc = spawnSync("g++", ["-O2", "-std=c++17", srcPath, "-o", binPath], {
-        encoding: "utf-8",
-        timeout: 10000
-      });
+      let canCompile = true;
+      try {
+        const check = spawnSync("g++", ["--version"]);
+        if (check.status !== 0 || check.error) canCompile = false;
+      } catch (e) { canCompile = false; }
 
-      if (compileProc.status !== 0 || compileProc.error) {
-        const compileErr = compileProc.stderr || compileProc.error?.message || "Compilation failed";
+      if (canCompile) {
+        const compileProc = spawnSync("g++", ["-O2", "-std=c++17", srcPath, "-o", binPath], {
+          encoding: "utf-8",
+          timeout: 10000
+        });
+
+        if (compileProc.status !== 0 || compileProc.error) {
+          const compileErr = compileProc.stderr || compileProc.error?.message || "Compilation failed";
+          for (let idx = 0; idx < testCases.length; idx++) {
+            const tc = testCases[idx];
+            results.push({
+              passed: false,
+              output: compileErr,
+              message: `[CE] Testcase ${idx + 1}\n   • Compilation Error:\n${compileErr}`,
+              verdict: 'CE',
+              input: tc.rawInput || String(tc.input),
+              expected: String(tc.expected),
+              actual: 'Compilation Error',
+              stdout: '',
+              time: '0 ms',
+              memory: '0 MB'
+            });
+          }
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
+          return res.json({ results, isCompileError: true, compileError: compileErr });
+        }
+
         for (let idx = 0; idx < testCases.length; idx++) {
           const tc = testCases[idx];
+          const stdinInput = formatTcInputToStdin(tc.input) || (tc.rawInput ? formatTcInputToStdin(tc.rawInput) : '');
+          const expectedStr = Array.isArray(tc.expected) ? tc.expected.join(' ') : String(tc.expected);
+          const startTime = Date.now();
+          const proc = spawnSync(binPath, [], { input: stdinInput, timeout: 2000, encoding: "utf-8" });
+          const duration = Date.now() - startTime;
+
+          let verdict = 'AC';
+          let errorMessage = '';
+          let stdout = (proc.stdout || '').trim();
+          let stderr = (proc.stderr || '').trim();
+
+          if (proc.error) {
+            if ((proc.error as any).code === 'ETIMEDOUT') {
+              verdict = 'TLE';
+              errorMessage = uiLanguage === 'vi' ? 'Quá thời hạn chạy (2000ms)' : 'Time Limit Exceeded (2000ms)';
+            } else {
+              verdict = 'RTE';
+              errorMessage = proc.error.message;
+            }
+          } else if (proc.status !== 0) {
+            verdict = 'RTE';
+            errorMessage = stderr || `Process exited with signal/status ${proc.status}`;
+          } else {
+            const passed = compareTokens(stdout, expectedStr);
+            verdict = passed ? 'AC' : 'WA';
+          }
+
+          const passed = verdict === 'AC';
+          const memStr = `${(2.1 + Math.random() * 1.0).toFixed(1)} MB`;
+          const timeStr = `${duration} ms`;
+          summaryData.push({ idx: idx + 1, verdict, time: timeStr, memory: memStr, passed });
+
+          let detailMsg = '';
+          if (verdict === 'AC') {
+            detailMsg = uiLanguage === 'vi' ? `👉 Kết quả: ${stdout} (Khớp đáp án)` : `👉 Result: ${stdout} (Matches expected)`;
+          } else if (verdict === 'WA') {
+            detailMsg = uiLanguage === 'vi' ? `👉 Đầu ra: ${stdout || '(Rỗng)'} | Kỳ vọng: ${expectedStr}` : `👉 Output: ${stdout || '(Empty)'} | Expected: ${expectedStr}`;
+          } else {
+            detailMsg = `⚠️ Error: ${errorMessage}`;
+          }
+
           results.push({
-            passed: false,
-            output: compileErr,
-            message: `[CE] Testcase ${idx + 1}\n   • Compilation Error:\n${compileErr}`,
-            verdict: 'CE',
-            input: tc.rawInput || String(tc.input),
-            expected: String(tc.expected),
-            actual: 'Compilation Error',
-            stdout: '',
-            time: '0 ms',
-            memory: '0 MB'
+            passed,
+            output: stdout || stderr || errorMessage,
+            message: `[${verdict}] Testcase ${idx + 1} (${timeStr} | ${memStr})\n   • Input: ${tc.rawInput || stdinInput.replace(/\n/g, ' ')}\n   • ${detailMsg}`,
+            verdict,
+            input: tc.rawInput || stdinInput,
+            expected: expectedStr,
+            actual: verdict === 'AC' || verdict === 'WA' ? (stdout || '(Rỗng)') : (stderr || errorMessage || 'Lỗi thực thi'),
+            stdout,
+            time: timeStr,
+            memory: memStr
           });
         }
-        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
-        return res.json({ results, isCompileError: true, compileError: compileErr });
-      }
-
-      for (let idx = 0; idx < testCases.length; idx++) {
-        const tc = testCases[idx];
-        let stdinInput = '';
-        if (typeof tc.input === 'string') {
-          stdinInput = tc.input;
-        } else if (Array.isArray(tc.input)) {
-          stdinInput = tc.input.map((x: any) => Array.isArray(x) ? x.join(' ') : String(x)).join(' ');
-        } else {
-          stdinInput = String(tc.input ?? '');
-        }
-
-        const expectedStr = Array.isArray(tc.expected) ? tc.expected.join(' ') : String(tc.expected);
-
-        const startTime = Date.now();
-        const proc = spawnSync(binPath, [], {
-          input: stdinInput,
-          timeout: 2000,
-          encoding: "utf-8"
-        });
-        const duration = Date.now() - startTime;
-
-        let verdict = 'AC';
-        let errorMessage = '';
-        let stdout = (proc.stdout || '').trim();
-        let stderr = (proc.stderr || '').trim();
-
-        if (proc.error) {
-          if ((proc.error as any).code === 'ETIMEDOUT') {
-            verdict = 'TLE';
-            errorMessage = uiLanguage === 'vi' ? 'Quá thời hạn chạy (2000ms)' : 'Time Limit Exceeded (2000ms)';
-          } else {
-            verdict = 'RTE';
-            errorMessage = proc.error.message;
+      } else {
+        // Fallback to Transpiler Judge
+        const jsCode = transpileCppToJS(cppCode);
+        const wrapperFn = new Function('runContext', `
+          ${TRANSPILER_HELPERS}
+          _init_stdin(runContext.rawStdin);
+          try {
+            ${jsCode}
+            if (typeof main === 'function') main();
+          } catch (e) {
+            _cout_write("\\n[RTE] " + e.message);
           }
-        } else if (proc.status !== 0) {
-          verdict = 'RTE';
-          errorMessage = stderr || `Process exited with signal/status ${proc.status}`;
-        } else {
-          const passed = compareTokens(stdout, expectedStr);
-          verdict = passed ? 'AC' : 'WA';
+          return { stdout: _stdout_buffer.join('') };
+        `);
+
+        for (let idx = 0; idx < testCases.length; idx++) {
+          const tc = testCases[idx];
+          const stdinInput = formatTcInputToStdin(tc.input) || (tc.rawInput ? formatTcInputToStdin(tc.rawInput) : '');
+          const expectedStr = Array.isArray(tc.expected) ? tc.expected.join(' ') : String(tc.expected);
+          const startTime = Date.now();
+          
+          let result: any = { stdout: '' };
+          let verdict = 'AC';
+          let errorMessage = '';
+
+          try {
+            result = wrapperFn({ rawStdin: stdinInput });
+          } catch (e: any) {
+            verdict = 'RTE';
+            errorMessage = e.message;
+          }
+
+          const duration = Date.now() - startTime;
+          const stdout = result.stdout.trim();
+
+          if (verdict === 'AC') {
+            if (stdout.includes('[RTE]')) {
+              verdict = 'RTE';
+              errorMessage = stdout.split('[RTE]')[1].trim();
+            } else if (stdout.includes('TLE:')) {
+              verdict = 'TLE';
+              errorMessage = stdout.split('TLE:')[1].trim();
+            } else {
+              const passed = compareTokens(stdout, expectedStr);
+              verdict = passed ? 'AC' : 'WA';
+            }
+          }
+
+          const passed = verdict === 'AC';
+          const memStr = "0.5 MB";
+          const timeStr = `${duration} ms`;
+
+          summaryData.push({ idx: idx + 1, verdict, time: timeStr, memory: memStr, passed });
+          results.push({
+            passed,
+            output: stdout || errorMessage,
+            message: `[${verdict}] Testcase ${idx + 1} (${timeStr})\n   • Fallback Engine used\n   • Output: ${stdout}`,
+            verdict,
+            input: tc.rawInput || stdinInput,
+            expected: expectedStr,
+            actual: stdout || errorMessage || '(Rỗng)',
+            stdout,
+            time: timeStr,
+            memory: memStr
+          });
         }
-
-        const passed = verdict === 'AC';
-        const memStr = `${(2.1 + Math.random() * 1.0).toFixed(1)} MB`;
-        const timeStr = `${duration} ms`;
-
-        summaryData.push({ idx: idx + 1, verdict, time: timeStr, memory: memStr, passed });
-
-        let detailMsg = '';
-        if (verdict === 'AC') {
-          detailMsg = uiLanguage === 'vi' ? `👉 Kết quả: ${stdout} (Khớp đáp án)` : `👉 Result: ${stdout} (Matches expected)`;
-        } else if (verdict === 'WA') {
-          detailMsg = uiLanguage === 'vi' ? `👉 Đầu ra: ${stdout || '(Rỗng)'} | Kỳ vọng: ${expectedStr}` : `👉 Output: ${stdout || '(Empty)'} | Expected: ${expectedStr}`;
-        } else {
-          detailMsg = `⚠️ Error: ${errorMessage}`;
-        }
-
-        const displayActual = verdict === 'AC' || verdict === 'WA' 
-          ? (stdout || '(Rỗng)') 
-          : (stderr || errorMessage || 'Lỗi thực thi');
-
-        results.push({
-          passed,
-          output: stdout || stderr || errorMessage,
-          message: `[${verdict}] Testcase ${idx + 1} (${timeStr} | ${memStr})\n   • Input: ${tc.rawInput || stdinInput.replace(/\n/g, ' ')}\n   • ${detailMsg}`,
-          verdict,
-          input: tc.rawInput || stdinInput,
-          expected: expectedStr,
-          actual: displayActual,
-          stdout,
-          time: timeStr,
-          memory: memStr
-        });
       }
+
     }
 
     // --- 3. PASCAL EXECUTION ---
@@ -834,14 +946,7 @@ end.`;
 
       for (let idx = 0; idx < testCases.length; idx++) {
         const tc = testCases[idx];
-        let stdinInput = '';
-        if (typeof tc.input === 'string') {
-          stdinInput = tc.input;
-        } else if (Array.isArray(tc.input)) {
-          stdinInput = tc.input.map((x: any) => Array.isArray(x) ? x.join(' ') : String(x)).join(' ');
-        } else {
-          stdinInput = String(tc.input ?? '');
-        }
+        const stdinInput = formatTcInputToStdin(tc.input) || (tc.rawInput ? formatTcInputToStdin(tc.rawInput) : '');
 
         const expectedStr = Array.isArray(tc.expected) ? tc.expected.join(' ') : String(tc.expected);
 

@@ -1,5 +1,7 @@
 import { CodingProblem } from '../types';
 
+import { transpileCppToJS, transpilePascalToJS, TRANSPILER_HELPERS } from './transpiler';
+
 export interface TestResult {
   passed: boolean;
   message: string;
@@ -42,27 +44,64 @@ export function compareTokens(actualStr: string, expectedStr: string): boolean {
   return true;
 }
 
-// Helper to convert function inputs to Standard Input format automatically
-export function generateStandardInput(inputArgs: any[]): string {
-  if (!Array.isArray(inputArgs)) return String(inputArgs);
-  
-  const parts: string[] = [];
-  for (const arg of inputArgs) {
-    if (Array.isArray(arg)) {
-      if (arg.length > 0 && Array.isArray(arg[0])) {
-        parts.push(`${arg.length} ${arg[0].length}`);
-        for (const row of arg) {
-          parts.push(row.join(' '));
-        }
-      } else {
-        parts.push(String(arg.length));
-        parts.push(arg.join(' '));
-      }
-    } else if (arg !== null && arg !== undefined) {
-      parts.push(String(arg));
+// Helper to convert function inputs or raw input to Standard Input format automatically
+export function formatTcInputToStdin(inputData: any): string {
+  if (inputData === null || inputData === undefined) return '';
+
+  let raw = '';
+  if (typeof inputData === 'string') {
+    raw = inputData;
+  } else if (Array.isArray(inputData)) {
+    if (inputData.length === 1 && typeof inputData[0] === 'string' && inputData[0].includes('\n')) {
+      raw = inputData[0];
+    } else {
+      raw = inputData.map(item => {
+        if (Array.isArray(item)) return item.join(' ');
+        if (typeof item === 'object' && item !== null) return JSON.stringify(item);
+        return String(item);
+      }).join(' ');
     }
+  } else {
+    raw = String(inputData);
   }
-  return parts.join(' ');
+
+  // Clean raw if it contains variable assignments like 's = "ex"' or 'a = 3, b = 5' or 'n = 7'
+  if (/\b[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*/.test(raw)) {
+    // Split by comma OR newline if followed by "var ="
+    const parts = raw.split(/(?:,|\n)\s*(?=[a-zA-Z_][a-zA-Z0-9_]*\s*=)/);
+    const cleanedTokens: string[] = [];
+    for (const part of parts) {
+      const eqIdx = part.indexOf('=');
+      if (eqIdx !== -1) {
+        let valStr = part.slice(eqIdx + 1).trim();
+        // Handle potential multiple values after = (like for arrays)
+        if ((valStr.startsWith('"') && valStr.endsWith('"')) || (valStr.startsWith("'") && valStr.endsWith("'"))) {
+          valStr = valStr.slice(1, -1);
+        } else if (valStr.startsWith('[') && valStr.endsWith(']')) {
+          try {
+            const arr = JSON.parse(valStr);
+            if (Array.isArray(arr)) {
+              valStr = arr.join(' ');
+            }
+          } catch (e) {}
+        }
+        cleanedTokens.push(valStr);
+      } else {
+        cleanedTokens.push(part.trim());
+      }
+    }
+    return cleanedTokens.join(' ');
+  }
+
+  if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+    return raw.slice(1, -1);
+  }
+
+  return raw;
+}
+
+export function generateStandardInput(inputArgs: any[]): string {
+  return formatTcInputToStdin(inputArgs);
 }
 
 // -------------------------------------------------------------
@@ -326,6 +365,20 @@ export function transpileCppToJS(code: string, entryFnName: string): string {
   clean = clean.replace(/for\s*\(\s*(char|int|auto|string)\s+([a-zA-Z0-9_]+)\s*:\s*([a-zA-Z0-9_]+)\s*\)/g, 'for (let $2 of $3)');
 
   // C++ Standard I/O transpilation
+  clean = clean.replace(/ios_base\s*::\s*sync_with_stdio\s*\([^)]*\)\s*;?/g, '');
+  clean = clean.replace(/cin\s*\.\s*tie\s*\([^)]*\)\s*;?/g, '');
+  clean = clean.replace(/cout\s*\.\s*tie\s*\([^)]*\)\s*;?/g, '');
+
+  clean = clean.replace(/\b(if|while)\s*\(\s*getline\s*\(\s*cin\s*,\s*([a-zA-Z0-9_]+)\s*\)\s*\)/g, '$1 (($2 = _getline_read()) !== null)');
+  clean = clean.replace(/getline\s*\(\s*cin\s*,\s*([a-zA-Z0-9_]+)\s*\)\s*;?/g, '$1 = _getline_read();');
+
+  // Convert cin in conditions e.g. if (cin >> s) or while (cin >> a >> b)
+  clean = clean.replace(/\b(if|while)\s*\(\s*cin\s*>>\s*([^)]+)\)/g, (match, keyword, body) => {
+    const vars = body.split('>>').map((v: string) => v.trim());
+    const conds = vars.map((v: string) => `(${v} = _cin_read()) !== null`).join(' && ');
+    return `${keyword} (${conds})`;
+  });
+
   let matchesCin = true;
   while (matchesCin) {
     const prev = clean;
@@ -565,14 +618,19 @@ export const evaluateCode = async (
     if (res.ok) {
       const data = await res.json();
       if (data.isCompileError) {
-        throw new Error(data.compileError || 'Compilation Error');
+        throw new Error(`[CE] Lỗi Biên Dịch (Compilation Error):\n${data.compileError || 'Compilation Error'}`);
       }
       if (Array.isArray(data.results)) {
         return data.results;
       }
     }
   } catch (err: any) {
-    if (err.message && (err.message.includes('Compilation Error') || err.message.includes('CE'))) {
+    if (err.message && (
+      err.message.includes('Compilation Error') || 
+      err.message.includes('[CE]') || 
+      err.message.includes('error:') ||
+      err.message.includes('Lỗi Biên Dịch')
+    )) {
       throw err;
     }
     console.warn("⚠️ Server judge API unavailable, using client fallback engine:", err);
@@ -835,18 +893,7 @@ export const evaluateCode = async (
       const tc = problem.testCases[idx];
       
       // Intelligent standard input resolution
-      let rawStdin = '';
-      if (typeof tc.input === 'string') {
-        rawStdin = tc.input;
-      } else if (Array.isArray(tc.input)) {
-        if (tc.input.length === 1 && typeof tc.input[0] === 'string' && tc.input[0].includes('\n')) {
-          rawStdin = tc.input[0];
-        } else {
-          rawStdin = generateStandardInput(tc.input);
-        }
-      } else {
-        rawStdin = String(tc.input || '');
-      }
+      const rawStdin = formatTcInputToStdin(tc.input) || (tc.rawInput ? formatTcInputToStdin(tc.rawInput) : '');
 
       let output: any = null;
       let stdoutStr = '';
@@ -900,6 +947,11 @@ export const evaluateCode = async (
             if (/^-?\\d+$/.test(tok)) return parseInt(tok, 10);
             if (/^-?\\d*\\.\\d+$/.test(tok)) return parseFloat(tok);
             return tok;
+          }
+
+          function _getline_read() {
+            if (_stdin_line_ptr >= _stdin_lines.length) return null;
+            return _stdin_lines[_stdin_line_ptr++];
           }
 
           function _cout_write(...args) {
