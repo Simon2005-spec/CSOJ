@@ -379,20 +379,23 @@ export default function App() {
   };
 
   if (!isLoggedIn) {
-    return <LoginSection onLoginSuccess={handleLoginSuccess} isDark={isDark} />;
+    return (
+      <div className={isDark ? 'dark' : ''}>
+        <LoginSection onLoginSuccess={handleLoginSuccess} isDark={isDark} />
+      </div>
+    );
   }
 
   if (username === 'admin') {
     return (
-      <div className={`csoj-app-wrapper ${isDark ? 'dark' : ''}`} id="csoj-root-application" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        {/* Floating background decorations */}
+      <div className={`csoj-app-wrapper ${isDark ? 'dark' : ''}`} id="csoj-root-application">
         <div className="ambient-blobs-container">
           <div className="ambient-blob ambient-blob-1" />
           <div className="ambient-blob ambient-blob-2" />
           <div className="ambient-blob ambient-blob-3" />
         </div>
         
-        <main style={{ flex: 1, overflowY: 'auto', position: 'relative', zIndex: 10 }}>
+        <main className="flex-1 relative z-10 overflow-auto">
           <AdminSection
             problems={problems}
             onAddProblem={handleAddProblem}
@@ -407,14 +410,12 @@ export default function App() {
 
   return (
     <div className={`csoj-app-wrapper ${isDark ? 'dark' : ''}`} id="csoj-root-application">
-      {/* Decorative Floating Ambient Glass Blobs */}
       <div className="ambient-blobs-container">
         <div className="ambient-blob ambient-blob-1" />
         <div className="ambient-blob ambient-blob-2" />
         <div className="ambient-blob ambient-blob-3" />
       </div>
 
-      {/* Header Panel */}
       {activeTab !== 'home' && (
         <Header
           timeLeft={timeLeft}
@@ -433,8 +434,7 @@ export default function App() {
         />
       )}
 
-      {/* Main Interactive Content */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+      <main className="flex-1 flex flex-col relative overflow-hidden">
         <AnimatePresence mode="wait">
           {activeTab === 'home' ? (
             <motion.div
@@ -443,7 +443,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+              className="flex-1 flex flex-col overflow-auto"
             >
               <HomeSection
                 problems={problems}
@@ -465,7 +465,7 @@ export default function App() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.2 }}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+              className="flex-1 flex flex-col overflow-hidden"
             >
               <CodeSection
                 problems={problems}
@@ -482,7 +482,6 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* VS Code Style Immersive status bar footer */}
       {activeTab !== 'home' && (
         <footer className="status-bar">
           <div className="status-bar-left">

@@ -1,6 +1,8 @@
 {
-  "name": "NHCOJ Quiz & Code",
-  "description": "An interactive NHCOJ-like coding and trắc nghiệm platform with a live in-browser compiler, code editor, and theory quiz grid.",
+  "name": "CSOJ - Coding System",
+  "description": "Hệ thống thi lập trình trực tuyến hiện đại với trình biên dịch thời gian thực, quản lý bài tập và bảng xếp hạng trực tiếp.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

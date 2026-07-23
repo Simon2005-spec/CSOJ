@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Clock, Sun, Moon, LogOut, Code, Home, Settings, Globe } from 'lucide-react';
+import { Clock, LogOut, Code, Home, Settings, Globe, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface HeaderProps {
@@ -20,31 +20,19 @@ interface HeaderProps {
 
 const translations = {
   vi: {
-    backHome: "Trở về trang chủ",
+    backHome: "Trang chủ",
     settings: "Cài đặt",
     logout: "Đăng xuất",
     theme: "Giao diện",
-    themeLight: "Nền sáng",
-    themeDark: "Nền tối",
     language: "Ngôn ngữ",
-    langVi: "Tiếng Việt",
-    langEn: "English",
-    close: "Đóng",
-    userAccount: "Tài khoản thí sinh",
     timeLeftLabel: "Thời gian còn lại",
   },
   en: {
-    backHome: "Return to Home",
+    backHome: "Home",
     settings: "Settings",
     logout: "Log out",
     theme: "Theme",
-    themeLight: "Light mode",
-    themeDark: "Dark mode",
     language: "Language",
-    langVi: "Vietnamese",
-    langEn: "English",
-    close: "Close",
-    userAccount: "Candidate Account",
     timeLeftLabel: "Time Remaining",
   }
 };
@@ -57,18 +45,14 @@ export default function Header({
   setIsDark,
   onSubmit,
   isFinished,
-  isHome = false,
   onGoHome,
   onLogout,
   language,
   setLanguage
 }: HeaderProps) {
   const t = translations[language];
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
-  // Format seconds to HH:MM:SS
   const formatTime = (seconds: number) => {
     if (seconds <= 0) return '00:00:00';
     const h = Math.floor(seconds / 3600);
@@ -83,197 +67,97 @@ export default function Header({
 
   useEffect(() => {
     if (isFinished) return;
-
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          if (prev === 1) {
-            onSubmit();
-          }
+          if (prev === 1) onSubmit();
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(timer);
   }, [isFinished, onSubmit, setTimeLeft]);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   return (
-    <header className="header-wrapper" id="main-app-header">
-      {/* Left side: Logo & Back to Home Button */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div className="logo-section" onClick={onGoHome} title="Về trang chủ">
-          <div className="logo-badge">
-            <Code size={16} className="pulse-animation" />
+    <header className="header-wrapper sticky top-0 z-50 bg-[var(--bg-card)]/80 backdrop-blur-xl border-b border-[var(--border-element)]">
+      <div className="flex items-center gap-5">
+        <div className="logo-section" onClick={onGoHome}>
+          <div className="w-8 h-8 rounded-lg bg-[var(--accent-gradient)] text-white flex items-center justify-center shadow-lg shadow-indigo-500/5">
+            <Code size={16} />
           </div>
-          <span className="logo-text">
-            <span className="gradient-text font-black">NHCOJ</span>
-          </span>
+          <span className="logo-text text-lg">CSOJ</span>
         </div>
 
-        {/* Home Button */}
-        <button onClick={onGoHome} className="csoj-btn csoj-btn-outline" style={{ padding: '0.375rem 0.75rem' }}>
-          <Home size={13} style={{ color: '#6366f1' }} />
-          <span className="hidden-xs">{t.backHome}</span>
+        <button onClick={onGoHome} className="flex items-center gap-2 px-2.5 py-1.5 rounded text-[10px] font-bold text-[var(--text-secondary)] transition-all">
+          <Home size={12} />
+          <span>{t.backHome}</span>
         </button>
       </div>
 
-      {/* Middle: Timer display */}
-      {!isHome && (
-        <div className="header-timer-box">
-          <div className="header-timer-pill">
-            <Clock size={13} className="spin-slow" />
-            <span>{formatTime(timeLeft)}</span>
-          </div>
-          <span className="header-timer-label">
-            {t.timeLeftLabel}
+      <div className="flex flex-col items-center">
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 dark:bg-white/5 border border-[var(--border-element)]">
+          <Clock size={12} className={timeLeft < 300 ? 'text-red-500 animate-pulse' : 'text-emerald-500'} />
+          <span className={`font-mono text-xs font-black tracking-tight ${timeLeft < 300 ? 'text-red-500' : 'text-[var(--text-primary)]'}`}>
+            {formatTime(timeLeft)}
           </span>
         </div>
-      )}
-      {isHome && <div style={{ flex: 1 }} />}
+      </div>
 
-      {/* Right side: User Profile & Dropdown */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-
-        <div className="user-section" ref={dropdownRef}>
-          <button onClick={() => setShowDropdown(!showDropdown)} className="user-profile-trigger">
-            <div className="user-avatar">
-              {userName ? userName[0].toUpperCase() : 'U'}
-            </div>
-            <span className="user-username hidden-xs">
-              {userName}
-            </span>
-          </button>
-
-          <AnimatePresence>
-            {showDropdown && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="dropdown-menu liquid-glass"
-              >
-                <div className="dropdown-header">
-                  <p className="dropdown-header-title">{t.userAccount}</p>
-                  <p className="dropdown-header-email">{userName}@nhcoj.org</p>
-                </div>
-                <div style={{ padding: '0.25rem' }}>
-                  <button
-                    onClick={() => {
-                      setShowDropdown(false);
-                      setShowSettingsModal(true);
-                    }}
-                    className="dropdown-item"
-                  >
-                    <Settings size={13} />
-                    <span>{t.settings}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowDropdown(false);
-                      onLogout();
-                    }}
-                    className="dropdown-item dropdown-item-danger"
-                  >
-                    <LogOut size={13} />
-                    <span>{t.logout}</span>
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pr-3 border-r border-[var(--border-element)]">
+          <div className="w-7 h-7 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-[9px] font-black text-[var(--text-muted)] border border-[var(--border-element)]">
+            {userName[0].toUpperCase()}
+          </div>
+          <span className="text-[11px] font-bold text-[var(--text-primary)]">{userName}</span>
         </div>
+        
+        <button onClick={() => setShowSettings(true)} className="p-1.5 rounded hover:bg-[var(--bg-hover)] text-[var(--text-muted)] transition-colors">
+          <Settings size={16} />
+        </button>
+        <button onClick={onLogout} className="p-1.5 rounded hover:bg-red-500/10 text-red-500 transition-colors">
+          <LogOut size={16} />
+        </button>
       </div>
 
       {/* Settings Modal */}
       <AnimatePresence>
-        {showSettingsModal && (
+        {showSettings && (
           <div className="modal-overlay">
-            <div
-              className="absolute inset-0"
-              style={{ position: 'absolute', inset: 0, background: 'transparent' }}
-              onClick={() => setShowSettingsModal(false)}
-            />
-            
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="modal-card liquid-glass"
-              style={{ zIndex: 110 }}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="modal-card max-w-sm"
             >
-              <div className="modal-header">
-                <Settings size={16} className="spin-slow" style={{ color: '#10b981' }} />
-                <h3 className="modal-title">{t.settings}</h3>
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-2">
+                  <Settings size={20} className="text-indigo-500" />
+                  <h3 className="text-xl font-black">{t.settings}</h3>
+                </div>
+                <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-[var(--bg-hover)] rounded-xl"><LogOut size={18} /></button>
               </div>
 
-              <div className="modal-body">
-                {/* Theme Selection */}
-                <div className="modal-setting-row">
-                  <label className="modal-setting-label">
-                    {isDark ? <Moon size={12} style={{ color: '#10b981' }} /> : <Sun size={12} style={{ color: '#eab308' }} />}
-                    <span>{t.theme}</span>
-                  </label>
-                  <div className="selection-toggle-grid">
-                    <button
-                      onClick={() => setIsDark(false)}
-                      className={`toggle-btn ${!isDark ? 'active-light' : ''}`}
-                    >
-                      {t.themeLight}
-                    </button>
-                    <button
-                      onClick={() => setIsDark(true)}
-                      className={`toggle-btn ${isDark ? 'active-dark' : ''}`}
-                    >
-                      {t.themeDark}
-                    </button>
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="form-label flex items-center gap-2"><Sun size={14} /> {t.theme}</label>
+                  <div className="grid grid-cols-2 gap-1 bg-[var(--bg-input)] p-1 rounded-xl">
+                    <button onClick={() => setIsDark(false)} className={`py-1.5 text-[9px] font-black uppercase rounded-lg ${!isDark ? 'bg-[var(--bg-card)] shadow text-indigo-600' : 'text-[var(--text-muted)]'}`}>LIGHT</button>
+                    <button onClick={() => setIsDark(true)} className={`py-1.5 text-[9px] font-black uppercase rounded-lg ${isDark ? 'bg-[var(--bg-app)] shadow text-indigo-400' : 'text-[var(--text-muted)]'}`}>DARK</button>
                   </div>
                 </div>
 
-                {/* Language Selection */}
-                <div className="modal-setting-row">
-                  <label className="modal-setting-label">
-                    <Globe size={12} style={{ color: '#6366f1' }} />
-                    <span>{t.language}</span>
-                  </label>
-                  <div className="selection-toggle-grid">
-                    <button
-                      onClick={() => setLanguage('vi')}
-                      className={`toggle-btn ${language === 'vi' ? (isDark ? 'active-dark' : 'active-light') : ''}`}
-                    >
-                      {t.langVi}
-                    </button>
-                    <button
-                      onClick={() => setLanguage('en')}
-                      className={`toggle-btn ${language === 'en' ? (isDark ? 'active-dark' : 'active-light') : ''}`}
-                    >
-                      {t.langEn}
-                    </button>
+                <div className="flex flex-col gap-2">
+                  <label className="form-label flex items-center gap-2"><Globe size={14} /> {t.language}</label>
+                  <div className="grid grid-cols-2 gap-1 bg-[var(--bg-input)] p-1 rounded-xl">
+                    <button onClick={() => setLanguage('vi')} className={`py-1.5 text-[9px] font-black uppercase rounded-lg ${language === 'vi' ? 'bg-indigo-500 text-white shadow' : 'text-[var(--text-muted)]'}`}>VIỆT</button>
+                    <button onClick={() => setLanguage('en')} className={`py-1.5 text-[9px] font-black uppercase rounded-lg ${language === 'en' ? 'bg-indigo-500 text-white shadow' : 'text-[var(--text-muted)]'}`}>ENG</button>
                   </div>
                 </div>
               </div>
 
-              <div className="modal-footer">
-                <button
-                  onClick={() => setShowSettingsModal(false)}
-                  className="csoj-btn csoj-btn-primary"
-                  style={{ padding: '0.375rem 1rem' }}
-                >
-                  {t.close}
-                </button>
-              </div>
+              <button onClick={() => setShowSettings(false)} className="csoj-btn csoj-btn-primary w-full py-3 mt-8">Đóng</button>
             </motion.div>
           </div>
         )}

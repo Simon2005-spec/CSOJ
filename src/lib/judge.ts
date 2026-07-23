@@ -1,7 +1,5 @@
 import { CodingProblem } from '../types';
 
-import { transpileCppToJS, transpilePascalToJS, TRANSPILER_HELPERS } from './transpiler';
-
 export interface TestResult {
   passed: boolean;
   message: string;
@@ -1749,7 +1747,7 @@ export const evaluateCode = async (
     const thinDivider = '-'.repeat(54);
     
     let report = `\n${divider}\n`;
-    report += `                  NHCOJ ONLINE JUDGE REPORT\n`;
+    report += `                  CSOJ ONLINE JUDGE REPORT\n`;
     report += `${divider}\n`;
     report += `  [TC #]     [VERDICT]     [TIME]         [MEMORY]\n`;
     report += `${thinDivider}\n`;

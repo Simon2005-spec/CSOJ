@@ -31,128 +31,122 @@ export default function LoginSection({ onLoginSuccess, isDark }: LoginSectionPro
       if ((normalizedUser === 'simon' || normalizedUser === 'admin') && password === '1230') {
         onLoginSuccess(normalizedUser);
       } else {
-        setError('Tài khoản hoặc mật khẩu không chính xác. Thử lại với tài khoản "simon" hoặc "admin" với mật khẩu "1230".');
+        setError('Tài khoản hoặc mật khẩu không chính xác.');
         setIsLoading(false);
       }
     }, 800);
   };
 
   return (
-    <div className="login-screen" id="login-page-container">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg-app)] relative overflow-hidden px-4">
       {/* Decorative ambient blobs */}
-      <div className="ambient-blobs-container">
-        <div className="ambient-blob ambient-blob-1" />
-        <div className="ambient-blob ambient-blob-2" />
-        <div className="ambient-blob ambient-blob-3" />
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/4 -left-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] animate-pulse" />
+        <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-purple-500/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="login-card liquid-glass"
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="w-full max-w-md"
       >
-        <div className="login-top-accent" />
-        
-        {/* Brand Header */}
-        <div className="login-header">
-          <div className="login-logo-badge">
-            <Code size={24} className="pulse-animation" />
-          </div>
-          <h2 className="login-title">
-            Đăng nhập <span className="gradient-text">NHCOJ</span>
-          </h2>
-          <p className="login-subtitle">
-            Hệ thống chấm bài lập trình trực tuyến thế hệ mới
-          </p>
-        </div>
-
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} className="csoj-form">
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="alert-error"
-            >
-              <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '1px' }} />
-              <span>{error}</span>
-            </motion.div>
-          )}
-
-          {/* Username Input */}
-          <div className="form-group">
-            <label className="form-label">TÊN TÀI KHOẢN (Username)</label>
-            <div className="input-container">
-              <span className="input-icon">
-                <User size={16} />
-              </span>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Nhập tên tài khoản"
-                className="csoj-input"
-                disabled={isLoading}
-                required
-              />
+        <div className="liquid-glass rounded-3xl p-8 md:p-10 shadow-2xl">
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-[var(--accent-gradient)] text-white flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-6">
+              <Code size={32} />
             </div>
+            <h1 className="text-3xl font-black tracking-tight text-[var(--text-primary)]">
+              CSOJ <span className="text-[var(--accent-primary)]">System</span>
+            </h1>
+            <p className="text-sm font-medium text-[var(--text-muted)] mt-2">
+              Hệ thống chấm bài lập trình trực tuyến
+            </p>
           </div>
 
-          {/* Password Input */}
-          <div className="form-group">
-            <label className="form-label">MẬT KHẨU (Password)</label>
-            <div className="input-container">
-              <span className="input-icon">
-                <Lock size={16} />
-              </span>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Nhập mật khẩu"
-                className="csoj-input"
-                disabled={isLoading}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="password-toggle"
-                tabIndex={-1}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center gap-3 p-4 rounded-xl bg-red-500/5 border border-red-500/20 text-red-500 text-xs font-bold"
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Prompt/Guide */}
-          <div className="tips-box" style={{ fontSize: '0.825rem', lineHeight: '1.5' }}>
-            💡 Gợi ý đăng nhập thử nghiệm:<br />
-            - Học sinh: tài khoản <strong>simon</strong> / mật khẩu <strong>1230</strong><br />
-            - Quản trị viên: tài khoản <strong>admin</strong> / mật khẩu <strong>1230</strong>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="csoj-btn csoj-btn-primary"
-            style={{ width: '100%', opacity: isLoading ? 0.85 : 1, padding: '0.75rem' }}
-          >
-            {isLoading ? (
-              <>
-                <svg className="spin-slow" style={{ marginRight: '0.5rem', width: '1rem', height: '1rem', color: 'white' }} fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span>Đang kết nối...</span>
-              </>
-            ) : (
-              <span>Đăng Nhập Hệ Thống</span>
+                <AlertCircle size={16} className="shrink-0" />
+                <span>{error}</span>
+              </motion.div>
             )}
-          </button>
-        </form>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="form-label">Tên đăng nhập</label>
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+                  <User size={18} />
+                </div>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="simon hoặc admin"
+                  className="csoj-input pl-11"
+                  disabled={isLoading}
+                  autoComplete="username"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="form-label">Mật khẩu</label>
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+                  <Lock size={18} />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="1230"
+                  className="csoj-input pl-11 pr-11"
+                  disabled={isLoading}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-[var(--bg-hover)]/30 border border-[var(--border-element)]">
+              <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">Thông tin dùng thử</p>
+              <div className="flex flex-col gap-1 text-xs text-[var(--text-secondary)]">
+                <div className="flex justify-between"><span>Học sinh:</span> <strong>simon / 1230</strong></div>
+                <div className="flex justify-between"><span>Admin:</span> <strong>admin / 1230</strong></div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="csoj-btn csoj-btn-primary w-full py-4 text-sm mt-2"
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Đang đăng nhập...</span>
+                </div>
+              ) : (
+                <span>Đăng nhập hệ thống</span>
+              )}
+            </button>
+          </form>
+        </div>
+        
+        <p className="text-center mt-8 text-xs font-medium text-[var(--text-muted)] opacity-60">
+          © 2024 CSOJ Engine. All rights reserved.
+        </p>
       </motion.div>
     </div>
   );
