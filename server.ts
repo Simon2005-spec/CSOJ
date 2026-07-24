@@ -189,7 +189,7 @@ function checkFirestoreError(err: any) {
 
   // 2. Secondary/fallback PostgreSQL seeding
   try {
-    const dbProbs = await db.select().from(dbProblems);
+    const dbProbs = await db.query.problems.findMany();
     if (dbProbs.length === 0) {
       console.log("Database is empty, seeding standard coding problems to PG...");
       for (const prob of inMemoryProblems) {
@@ -231,7 +231,7 @@ app.get("/api/problems", async (req, res) => {
 
   try {
     if (useDatabase) {
-      const dbProbs = await db.select().from(dbProblems);
+      const dbProbs = await db.query.problems.findMany();
       const decodedProbs = dbProbs.map(deserializeProblem);
       inMemoryProblems = decodedProbs;
       return res.json(decodedProbs);
@@ -353,7 +353,7 @@ app.get("/api/submissions", async (req, res) => {
 
   try {
     if (useDatabase) {
-      const dbSubs = await db.select().from(dbSubmissions);
+      const dbSubs = await db.query.submissions.findMany() as any[];
       const result: { [username: string]: any } = {};
       for (const sub of dbSubs) {
         result[sub.username] = deserializeSubmission(sub);
@@ -390,11 +390,14 @@ app.get("/api/submissions/:username", async (req, res) => {
 
   try {
     if (useDatabase) {
-      const dbSubs = await db.select().from(dbSubmissions).where(eq(dbSubmissions.username, username)).limit(1);
-      if (dbSubs.length > 0) {
-        const decoded = deserializeSubmission(dbSubs[0]);
-        inMemorySubmissions[username] = decoded;
-        return res.json(decoded);
+      const decoded = await db.query.submissions.findFirst({
+        where: eq(dbSubmissions.username, username)
+      });
+      
+      if (decoded) {
+        const sub = deserializeSubmission(decoded);
+        inMemorySubmissions[username] = sub;
+        return res.json(sub);
       } else {
         return res.json(null);
       }
@@ -1027,6 +1030,15 @@ if (!process.env.VERCEL) {
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`NHCOJ full-stack server running on http://localhost:${PORT}`);
+    });
+
+    // Error handling middleware for API routes to always return JSON
+    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      console.error("Unhandled error:", err);
+      if (req.path.startsWith('/api')) {
+        return res.status(500).json({ error: "Internal Server Error", details: err.message });
+      }
+      next(err);
     });
   };
 

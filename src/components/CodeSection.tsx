@@ -49,8 +49,8 @@ export default function CodeSection({
   const [editorFontSize, setEditorFontSize] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('csoj_editor_font_size');
-      return saved ? parseInt(saved, 10) : 14;
-    } catch (e) { return 14; }
+      return saved ? parseInt(saved, 10) : 18;
+    } catch (e) { return 18; }
   });
 
   useEffect(() => {
@@ -64,6 +64,22 @@ export default function CodeSection({
     latestCodeRef.current = code;
   }, [code]);
 
+  const getStarterCode = (lang: SupportedLanguage) => {
+    if (problem.defaultCode && problem.defaultCode[lang]) {
+      return problem.defaultCode[lang];
+    }
+    if (lang === 'cpp') {
+      return '#include <bits/stdc++.h>\n\nusing namespace std;\n\nint main() {\n    ios_base::sync_with_stdio(false);\n    cin.tie(NULL);\n    \n    // freopen("input.txt", "r", stdin);\n    // freopen("output.txt", "w", stdout);\n    \n    // Viết code của bạn ở đây\n    \n    return 0;\n}';
+    }
+    if (lang === 'python') {
+      return 'import sys\n\ndef solve():\n    # Dữ liệu đọc từ stdin\n    # input = sys.stdin.read().split()\n    pass\n\nif __name__ == "__main__":\n    solve()';
+    }
+    if (lang === 'pascal') {
+      return 'program Problem;\nuses math;\nvar\n  // Khai báo biến ở đây\nbegin\n  // Viết code của bạn ở đây\nend.';
+    }
+    return '// Viết code của bạn ở đây';
+  };
+
   useEffect(() => {
     if (!problem) return;
     const saved = codingAnswers[problem.id];
@@ -73,20 +89,19 @@ export default function CodeSection({
     } else if (saved && saved.language === selectedLang) {
       initialCode = saved.code;
     } else {
-      initialCode = problem.defaultCode[selectedLang as keyof typeof problem.defaultCode] || '';
+      initialCode = getStarterCode(selectedLang);
     }
     setCode(initialCode);
     latestCodeRef.current = initialCode;
   }, [problem?.id, selectedLang, Object.keys(codingAnswers).length === 0]);
 
-  const syncCodeToParent = useCallback((codeToSync: string, langToSync: SupportedLanguage) => {
-    if (!problem) return;
+  const syncCodeToParent = useCallback((codeToSync: string, langToSync: SupportedLanguage, probId: string) => {
     setCodingAnswers((prev) => {
-      const prevProblem = prev[problem.id] || { code: '', language: langToSync, passed: false };
+      const prevProblem = prev[probId] || { code: '', language: langToSync, passed: false };
       const updatedCodes = { ...((prevProblem as any).codes || {}), [langToSync]: codeToSync };
       return {
         ...prev,
-        [problem.id]: {
+        [probId]: {
           code: codeToSync,
           language: langToSync,
           passed: prevProblem.passed || false,
@@ -94,14 +109,19 @@ export default function CodeSection({
         } as any
       };
     });
-  }, [problem, setCodingAnswers]);
+  }, [setCodingAnswers]);
 
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
     latestCodeRef.current = newCode;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    
+    // Capture the current problem ID to prevent race conditions during switching
+    const currentId = problem.id;
+    const currentLang = selectedLang;
+    
     debounceTimerRef.current = setTimeout(() => {
-      syncCodeToParent(newCode, selectedLang);
+      syncCodeToParent(newCode, currentLang, currentId);
     }, 500);
   };
 
@@ -121,17 +141,23 @@ export default function CodeSection({
 
   const handleLanguageChange = (lang: SupportedLanguage) => {
     if (!problem) return;
+    
+    // Sync current code before switching language
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      syncCodeToParent(latestCodeRef.current, selectedLang, problem.id);
+    }
+
     setSelectedLang(lang);
     const prevProblem = codingAnswers[problem.id];
-    const savedCode = (prevProblem as any)?.codes?.[lang] ?? problem.defaultCode[lang] ?? '';
+    const savedCode = (prevProblem as any)?.codes?.[lang] ?? getStarterCode(lang);
     setCode(savedCode);
     latestCodeRef.current = savedCode;
-    syncCodeToParent(savedCode, lang);
   };
 
   const runCode = async () => {
     if (!problem) return;
-    syncCodeToParent(latestCodeRef.current, selectedLang);
+    syncCodeToParent(latestCodeRef.current, selectedLang, problem.id);
     setIsRunning(true);
     setIsConsoleCollapsed(false);
     setActiveConsoleTab('result');
@@ -144,13 +170,16 @@ export default function CodeSection({
       setLastResults(results);
       const allPassed = results.every(r => r.passed);
       
-      setCodingAnswers(prev => ({
-        ...prev,
-        [problem.id]: {
-          ...prev[problem.id],
-          passed: allPassed
-        } as any
-      }));
+      setCodingAnswers(prev => {
+        const prevProblem = prev[problem.id] || { code: latestCodeRef.current, language: selectedLang, passed: false };
+        return {
+          ...prev,
+          [problem.id]: {
+            ...prevProblem,
+            passed: allPassed
+          } as any
+        };
+      });
     } catch (err: any) {
       setCompileError(err.message);
     }
@@ -166,41 +195,51 @@ export default function CodeSection({
   if (!problem) return null;
 
   return (
-    <div className="workspace-wrapper flex flex-col flex-1 overflow-hidden">
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-        {/* LEFT PANEL */}
-        <div className="w-full lg:w-[40%] flex flex-col min-h-0 border-b lg:border-b-0 lg:border-r border-[var(--border-element)] bg-[var(--bg-card)]/50">
-          <ProblemDescription problem={problem} language={language} />
+    <div className="workspace-wrapper flex flex-col flex-1 overflow-hidden bg-[var(--bg-app)]">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden app-container py-4 lg:py-6 gap-4 lg:gap-6">
+        {/* LEFT PANEL: Problem Description */}
+        <div className="w-full lg:w-[32%] min-w-0 flex flex-col min-h-0 rounded-xl border border-[var(--border-element)] bg-[var(--bg-card)] overflow-hidden shadow-sm">
+          <div className="h-10 px-4 border-b border-[var(--border-element)] flex items-center bg-[var(--bg-editor-toolbar)]">
+            <span className="text-[11px] font-bold text-[var(--text-primary)] uppercase tracking-widest flex items-center gap-2">
+              <span className="w-1.5 h-3.5 bg-[#ffa116] rounded-full" />
+              {t.tabDescription}
+            </span>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <ProblemDescription problem={problem} language={language} />
+          </div>
         </div>
 
-        {/* RIGHT PANEL */}
-        <div className="w-full lg:w-[60%] flex flex-col min-h-0 bg-[var(--bg-editor)]">
+        {/* RIGHT PANEL: Editor & Console */}
+        <div className="w-full lg:w-[68%] min-w-0 flex flex-col min-h-0 rounded-xl border border-[var(--border-element)] bg-[var(--bg-editor)] overflow-hidden shadow-sm">
           <div className="editor-toolbar h-10 flex items-center justify-between px-3 shrink-0 bg-[var(--bg-editor-toolbar)] border-b border-[var(--border-element)]">
             <div className="flex items-center gap-2">
               <select
                 value={selectedLang}
                 onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
-                className="bg-[var(--bg-input)] text-[10px] font-bold px-2 py-0.5 rounded border border-[var(--border-element)] outline-none cursor-pointer"
+                className="bg-transparent text-[13px] font-medium px-2 py-1 rounded hover:bg-[var(--bg-hover)] transition-colors outline-none cursor-pointer text-[var(--text-primary)]"
               >
                 <option value="cpp">C++ 17</option>
                 <option value="python">Python 3</option>
                 <option value="pascal">Pascal</option>
               </select>
 
-              <div className="flex items-center gap-1 bg-[var(--bg-input)] px-1 py-0.5 rounded border border-[var(--border-element)]">
-                <button onClick={() => setEditorFontSize(v => Math.max(12, v-1))} className="p-0.5 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)]"><ZoomOut size={10} /></button>
-                <span className="text-[9px] font-mono font-bold min-w-[1.5rem] text-center">{editorFontSize}px</span>
-                <button onClick={() => setEditorFontSize(v => Math.min(24, v+1))} className="p-0.5 hover:bg-[var(--bg-hover)] rounded text-[var(--text-muted)]"><ZoomIn size={10} /></button>
+              <div className="h-4 w-px bg-[var(--border-element)] mx-1" />
+
+              <div className="flex items-center gap-0.5">
+                <button onClick={() => setEditorFontSize(v => Math.max(12, v-1))} className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-secondary)]" title="Zoom Out"><ZoomOut size={14} /></button>
+                <span className="text-[11px] font-mono font-medium min-w-[2rem] text-center text-[var(--text-muted)]">{editorFontSize}px</span>
+                <button onClick={() => setEditorFontSize(v => Math.min(24, v+1))} className="p-1 hover:bg-[var(--bg-hover)] rounded text-[var(--text-secondary)]" title="Zoom In"><ZoomIn size={14} /></button>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <button onClick={runCode} disabled={isRunning} className="csoj-btn csoj-btn-outline py-1 px-2.5 text-[10px]">
-                <Play size={10} className="fill-emerald-500 stroke-none" />
+            <div className="flex items-center gap-2">
+              <button onClick={runCode} disabled={isRunning} className="csoj-btn csoj-btn-outline h-7 px-3 text-[12px] font-medium">
+                <Play size={12} className="text-[#2cbb5d] fill-[#2cbb5d]/20" />
                 <span>{t.btnRun}</span>
               </button>
-              <button onClick={submitCode} disabled={isSubmitting} className="csoj-btn csoj-btn-primary py-1 px-2.5 text-[10px]">
-                <CheckSquare size={10} />
+              <button onClick={submitCode} disabled={isSubmitting} className="csoj-btn csoj-btn-primary h-7 px-3 text-[12px] font-medium shadow-none">
+                <CheckSquare size={12} />
                 <span>{t.btnSubmit}</span>
               </button>
             </div>
@@ -210,7 +249,7 @@ export default function CodeSection({
             code={code}
             onCodeChange={handleCodeChange}
             onKeyDown={handleKeyDown}
-            onBlur={() => syncCodeToParent(latestCodeRef.current, selectedLang)}
+            onBlur={() => syncCodeToParent(latestCodeRef.current, selectedLang, problem.id)}
             selectedLang={selectedLang}
             editorFontSize={editorFontSize}
           />

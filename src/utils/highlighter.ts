@@ -57,19 +57,22 @@ export function highlightCode(code: string, language: 'cpp' | 'python' | 'pascal
     ];
 
     const keywordRegex = new RegExp(`\\b(${keywords.join('|')})\\b`, 'g');
-    html = html.replace(keywordRegex, '<span class="hl-keyword">$1</span>');
+    html = html.replace(keywordRegex, (match) => pushToken(match, 'hl-keyword'));
 
     const typeRegex = new RegExp(`\\b(${types.join('|')})\\b`, 'g');
-    html = html.replace(typeRegex, '<span class="hl-type">$1</span>');
+    html = html.replace(typeRegex, (match) => pushToken(match, 'hl-type'));
 
     // Numbers
-    html = html.replace(/\b(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/g, '<span class="hl-number">$1</span>');
+    html = html.replace(/\b(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/g, (match) => pushToken(match, 'hl-number'));
 
     // Functions (word followed by open parenthesis)
-    html = html.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\s*\()/g, '<span class="hl-function">$1</span>');
+    html = html.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\s*\()/g, (match) => pushToken(match, 'hl-function'));
 
     // Builtins / special keywords
-    html = html.replace(/\b(std|cin|cout|endl|printf|scanf)\b/g, '<span class="hl-builtin">$1</span>');
+    html = html.replace(/\b(std|cin|cout|endl|printf|scanf)\b/g, (match) => pushToken(match, 'hl-builtin'));
+
+    // Operators - IMPORTANT: Must be done BEFORE restoring tokens but AFTER words to avoid matching inside placeholders
+    html = html.replace(/([+\-*/%=<>!&|^~]+)/g, (match) => pushToken(match, 'hl-operator'));
 
     // Restore tokens
     for (let i = 0; i < tokens.length; i++) {
@@ -106,7 +109,7 @@ export function highlightCode(code: string, language: 'cpp' | 'python' | 'pascal
     ];
 
     const keywordRegex = new RegExp(`\\b(${keywords.join('|')})\\b`, 'g');
-    html = html.replace(keywordRegex, '<span class="hl-keyword">$1</span>');
+    html = html.replace(keywordRegex, (match) => pushToken(match, 'hl-keyword'));
 
     // Builtin functions
     const builtins = [
@@ -118,13 +121,16 @@ export function highlightCode(code: string, language: 'cpp' | 'python' | 'pascal
     ];
 
     const builtinRegex = new RegExp(`\\b(${builtins.join('|')})\\b`, 'g');
-    html = html.replace(builtinRegex, '<span class="hl-builtin">$1</span>');
+    html = html.replace(builtinRegex, (match) => pushToken(match, 'hl-builtin'));
 
     // Numbers
-    html = html.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="hl-number">$1</span>');
+    html = html.replace(/\b(\d+(?:\.\d+)?)\b/g, (match) => pushToken(match, 'hl-number'));
 
     // Functions
-    html = html.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\s*\()/g, '<span class="hl-function">$1</span>');
+    html = html.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\s*\()/g, (match) => pushToken(match, 'hl-function'));
+
+    // Operators
+    html = html.replace(/([+\-*/%=<>!&|^~]+)/g, (match) => pushToken(match, 'hl-operator'));
 
     // Restore tokens
     for (let i = 0; i < tokens.length; i++) {
@@ -156,26 +162,29 @@ export function highlightCode(code: string, language: 'cpp' | 'python' | 'pascal
       'uses', 'implementation', 'interface', 'unit', 'uses', 'true', 'false'
     ];
     const keywordRegex = new RegExp(`\\b(${keywords.join('|')})\\b`, 'gi');
-    html = html.replace(keywordRegex, '<span class="hl-keyword">$1</span>');
+    html = html.replace(keywordRegex, (match) => pushToken(match, 'hl-keyword'));
 
     const types = [
       'integer', 'real', 'char', 'string', 'boolean', 'text'
     ];
     const typeRegex = new RegExp(`\\b(${types.join('|')})\\b`, 'gi');
-    html = html.replace(typeRegex, '<span class="hl-type">$1</span>');
+    html = html.replace(typeRegex, (match) => pushToken(match, 'hl-type'));
 
     // Builtins
     const builtins = [
       'write', 'writeln', 'read', 'readln', 'abs', 'sqr', 'sqrt', 'odd', 'pred', 'succ'
     ];
     const builtinRegex = new RegExp(`\\b(${builtins.join('|')})\\b`, 'gi');
-    html = html.replace(builtinRegex, '<span class="hl-builtin">$1</span>');
+    html = html.replace(builtinRegex, (match) => pushToken(match, 'hl-builtin'));
 
     // Numbers
-    html = html.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="hl-number">$1</span>');
+    html = html.replace(/\b(\d+(?:\.\d+)?)\b/g, (match) => pushToken(match, 'hl-number'));
 
     // Functions / Procedures calls
-    html = html.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\s*\()/g, '<span class="hl-function">$1</span>');
+    html = html.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\s*\()/g, (match) => pushToken(match, 'hl-function'));
+
+    // Operators
+    html = html.replace(/([+\-*/%=<>!&|^~:=]+)/g, (match) => pushToken(match, 'hl-operator'));
 
     // Restore tokens
     for (let i = 0; i < tokens.length; i++) {

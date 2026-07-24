@@ -92,11 +92,16 @@ export default function App() {
   const fetchProblems = async () => {
     try {
       const res = await fetch(`/api/problems?t=${Date.now()}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && Array.isArray(data)) {
-          setProblems(data);
-        }
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status}`);
+      }
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server did not return JSON");
+      }
+      const data = await res.json();
+      if (data && Array.isArray(data)) {
+        setProblems(data);
       }
     } catch (err) {
       console.error("Failed to fetch problems from server:", err);
@@ -129,6 +134,10 @@ export default function App() {
         if (!active) return;
         
         if (res.ok) {
+          const contentType = res.headers.get("content-type");
+          if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Server did not return JSON");
+          }
           const data = await res.json();
           if (data) {
             if (data.codingAnswers) {
@@ -389,13 +398,7 @@ export default function App() {
   if (username === 'admin') {
     return (
       <div className={`csoj-app-wrapper ${isDark ? 'dark' : ''}`} id="csoj-root-application">
-        <div className="ambient-blobs-container">
-          <div className="ambient-blob ambient-blob-1" />
-          <div className="ambient-blob ambient-blob-2" />
-          <div className="ambient-blob ambient-blob-3" />
-        </div>
-        
-        <main className="flex-1 relative z-10 overflow-auto">
+      <main className="flex-1 relative z-10 overflow-auto">
           <AdminSection
             problems={problems}
             onAddProblem={handleAddProblem}
@@ -410,27 +413,11 @@ export default function App() {
 
   return (
     <div className={`csoj-app-wrapper ${isDark ? 'dark' : ''}`} id="csoj-root-application">
-      <div className="ambient-blobs-container">
-        <div className="ambient-blob ambient-blob-1" />
-        <div className="ambient-blob ambient-blob-2" />
-        <div className="ambient-blob ambient-blob-3" />
-      </div>
-
       {activeTab !== 'home' && (
         <Header
-          timeLeft={timeLeft}
-          setTimeLeft={setTimeLeft}
-          userName={username}
-          userId="123456"
-          isDark={isDark}
-          setIsDark={setIsDark}
-          onSubmit={() => {}}
-          isFinished={false}
-          isHome={false}
           onGoHome={() => setActiveTab('home')}
           onLogout={handleLogout}
           language={language}
-          setLanguage={setLanguage}
         />
       )}
 

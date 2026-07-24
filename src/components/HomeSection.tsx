@@ -97,43 +97,41 @@ export default function HomeSection({
 
   return (
     <div className="flex flex-col flex-1 bg-[var(--bg-app)] relative overflow-hidden">
-      {/* Decorative Blobs */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-[100px] pointer-events-none" />
-
       {/* Nav */}
-      <header className="header-wrapper sticky top-0 z-40 bg-[var(--bg-card)]/80 backdrop-blur-xl">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[var(--accent-gradient)] text-white flex items-center justify-center shadow-lg shadow-indigo-500/10">
-            <Code size={16} />
-          </div>
-          <span className="text-lg font-black tracking-tight text-[var(--text-primary)]">CSOJ</span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 pr-3 border-r border-[var(--border-element)]">
-            <div className="w-7 h-7 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-[10px] font-bold text-[var(--text-secondary)] border border-[var(--border-element)]">
-              {username[0].toUpperCase()}
+      <header className="header-wrapper sticky top-0 z-40 bg-[var(--bg-card)]/80 backdrop-blur-xl shadow-sm">
+        <div className="header-content h-14 md:h-16 px-4 md:px-10">
+          <div 
+            onClick={() => onSelectTab('home')}
+            className="flex items-center gap-2 cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[var(--accent-gradient)] text-white flex items-center justify-center shadow-lg shadow-indigo-500/15 group-hover:scale-105 transition-transform">
+              <Code size={20} />
             </div>
-            <span className="text-xs font-bold text-[var(--text-primary)]">{username}</span>
+            <span className="text-xl font-black tracking-tight text-[var(--text-primary)]">CSOJ</span>
           </div>
-          <button onClick={() => setShowSettings(true)} className="p-2 rounded hover:bg-[var(--bg-hover)] text-[var(--text-muted)] transition-colors">
-            <Settings size={18} />
-          </button>
-          <button onClick={onLogout} className="p-2 rounded hover:bg-red-500/10 text-red-500 transition-colors">
-            <LogOut size={18} />
-          </button>
+  
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 pr-4 border-r border-[var(--border-element)]">
+              <div className="w-8 h-8 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] border border-[var(--border-element)]">
+                {username[0].toUpperCase()}
+              </div>
+              <span className="text-sm font-bold text-[var(--text-primary)]">{username}</span>
+            </div>
+            <button onClick={onLogout} className="p-2.5 rounded-xl hover:bg-red-500/10 text-red-500 transition-colors">
+              <LogOut size={20} />
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 relative z-10">
-        <div className="flex flex-col gap-6">
+      <main className="flex-1 app-container pt-4 pb-8 md:pt-6 md:pb-16 lg:pt-8 lg:pb-20 relative z-10">
+        <div className="flex flex-col gap-10 md:gap-16">
           {/* Welcome Hero */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-4">
             <motion.h1 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-xl md:text-2xl font-black tracking-tight text-[var(--text-primary)]"
+              className="text-3xl md:text-5xl font-black tracking-tight text-[var(--text-primary)] break-words"
             >
               {t.welcome} <span className="text-[var(--accent-primary)]">{username}!</span>
             </motion.h1>
@@ -141,48 +139,46 @@ export default function HomeSection({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-sm font-medium text-[var(--text-muted)] max-w-2xl leading-relaxed"
+              className="text-lg md:text-xl font-medium text-[var(--text-muted)] max-w-2xl leading-loose opacity-90"
             >
               {t.subtitle}
             </motion.p>
           </div>
 
           {/* Dashboard Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Main Practice Card */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
-              className="lg:col-span-8 liquid-glass rounded-[1rem] p-5 md:p-6 flex flex-col gap-4 relative overflow-hidden group"
+              className="lg:col-span-8 liquid-glass rounded-[1.5rem] p-6 md:p-8 flex flex-col gap-6 relative overflow-hidden group"
             >
-              <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent-primary)]/5 rounded-full blur-[60px] translate-x-1/2 -translate-y-1/2 group-hover:bg-[var(--accent-primary)]/10 transition-colors" />
-              
               <div className="flex items-center justify-between relative z-10">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20">
-                    <LayoutDashboard size={16} />
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20">
+                    <LayoutDashboard size={24} />
                   </div>
                   <div>
-                    <h2 className="text-base font-extrabold text-[var(--text-primary)]">{t.codingTitle}</h2>
-                    <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 mt-0.5">
-                      <Clock size={10} /> 90 {language === 'vi' ? 'phút' : 'mins'}
+                    <h2 className="text-xl font-extrabold text-[var(--text-primary)]">{t.codingTitle}</h2>
+                    <span className="flex items-center gap-2 text-xs font-bold text-emerald-500 mt-1">
+                      <Clock size={14} /> 90 {language === 'vi' ? 'phút' : 'mins'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <p className="text-xs text-[var(--text-secondary)] font-medium leading-relaxed max-w-xl relative z-10">
+              <p className="text-sm text-[var(--text-secondary)] font-medium leading-relaxed max-w-xl relative z-10">
                 {t.codingDesc}
               </p>
 
-              <div className="flex flex-col gap-4 mt-auto relative z-10">
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between text-[9px] font-extrabold uppercase tracking-widest text-[var(--text-muted)]">
+              <div className="flex flex-col gap-6 mt-auto relative z-10">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-widest text-[var(--text-muted)]">
                     <span>{t.codingProgress}</span>
                     <span>{passedCount}/{problems.length} {t.passed}</span>
                   </div>
-                  <div className="h-1.5 w-full bg-[var(--bg-input)] rounded-full overflow-hidden border border-[var(--border-element)]">
+                  <div className="h-2.5 w-full bg-[var(--bg-input)] rounded-full overflow-hidden border border-[var(--border-element)]">
                     <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: `${progressPercent}%` }}
@@ -192,22 +188,22 @@ export default function HomeSection({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 pt-3 border-t border-[var(--border-element)]">
+                <div className="flex flex-wrap gap-4 pt-6 border-t border-[var(--border-element)]">
                   {Object.keys(codingAnswers).length > 0 ? (
                     <>
-                      <button onClick={() => onSelectTab('coding')} className="csoj-btn csoj-btn-primary px-4 py-2 text-[11px]">
-                        <Eye size={12} />
+                      <button onClick={() => onSelectTab('coding')} className="csoj-btn csoj-btn-primary px-8 py-3.5 text-sm">
+                        <Eye size={16} />
                         <span>{t.actionReview}</span>
                       </button>
-                      <button onClick={() => setShowResetConfirm(true)} className="csoj-btn csoj-btn-outline px-4 py-2 text-[11px]">
-                        <RotateCcw size={12} />
+                      <button onClick={() => setShowResetConfirm(true)} className="csoj-btn csoj-btn-outline px-8 py-3.5 text-sm">
+                        <RotateCcw size={16} />
                         <span>{t.actionRetake}</span>
                       </button>
                     </>
                   ) : (
-                    <button onClick={() => onSelectTab('coding')} className="csoj-btn csoj-btn-primary px-6 py-2.5 text-[11px]">
+                    <button onClick={() => onSelectTab('coding')} className="csoj-btn csoj-btn-primary px-10 py-4 text-sm">
                       <span>{t.actionStart}</span>
-                      <ArrowRight size={12} />
+                      <ArrowRight size={18} />
                     </button>
                   )}
                 </div>
@@ -215,20 +211,20 @@ export default function HomeSection({
             </motion.div>
 
             {/* Stats / Sidebar Cards */}
-            <div className="lg:col-span-4 flex flex-col gap-4">
+            <div className="lg:col-span-4 flex flex-col gap-6">
               <motion.div 
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
-                className="liquid-glass rounded-[1rem] p-5 flex flex-col gap-2 items-center text-center bg-[var(--accent-gradient)] text-white border-none shadow-md"
+                className="liquid-glass rounded-[1.5rem] p-8 flex flex-col gap-4 items-center text-center bg-[var(--accent-gradient)] text-white border-none shadow-xl shadow-indigo-500/20"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-0.5">
-                  <Trophy size={20} />
+                <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2">
+                  <Trophy size={28} />
                 </div>
                 <div>
-                  <p className="text-[9px] font-extrabold uppercase tracking-widest opacity-70 mb-0.5">{t.scoreLabel}</p>
-                  <h3 className="text-2xl font-black">{currentScore}</h3>
-                  <p className="text-[8px] font-bold mt-0.5 opacity-80 uppercase tracking-tighter">THANG ĐIỂM 10.0</p>
+                  <p className="text-xs font-extrabold uppercase tracking-widest opacity-70 mb-1">{t.scoreLabel}</p>
+                  <h3 className="text-4xl font-black">{currentScore}</h3>
+                  <p className="text-[10px] font-bold mt-1 opacity-80 uppercase">THANG ĐIỂM 10.0</p>
                 </div>
               </motion.div>
 
@@ -236,15 +232,15 @@ export default function HomeSection({
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 }}
-                className="liquid-glass rounded-[1rem] p-5 flex flex-col gap-3"
+                className="liquid-glass rounded-[1.5rem] p-8 flex flex-col gap-6"
               >
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
-                    <ShieldCheck size={16} />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
+                    <ShieldCheck size={20} />
                   </div>
-                  <h3 className="font-extrabold text-[var(--text-primary)] text-xs">Hệ thống an toàn</h3>
+                  <h3 className="font-extrabold text-[var(--text-primary)]">Hệ thống an toàn</h3>
                 </div>
-                <p className="text-[10px] text-[var(--text-muted)] font-medium leading-relaxed">
+                <p className="text-sm text-[var(--text-muted)] font-medium leading-relaxed">
                   Tất cả bài nộp được lưu trữ an toàn và đồng bộ hóa thời gian thực với máy chủ chấm bài.
                 </p>
               </motion.div>

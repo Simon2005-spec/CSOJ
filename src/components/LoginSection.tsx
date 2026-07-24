@@ -39,12 +39,6 @@ export default function LoginSection({ onLoginSuccess, isDark }: LoginSectionPro
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--bg-app)] relative overflow-hidden px-4">
-      {/* Decorative ambient blobs */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 -left-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-purple-500/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-      </div>
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -64,7 +58,7 @@ export default function LoginSection({ onLoginSuccess, isDark }: LoginSectionPro
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5" autoComplete="off">
             {error && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -86,10 +80,10 @@ export default function LoginSection({ onLoginSuccess, isDark }: LoginSectionPro
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="simon hoặc admin"
-                  className="csoj-input pl-11"
+                  placeholder=""
+                  className="csoj-input !pl-12"
                   disabled={isLoading}
-                  autoComplete="username"
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -104,10 +98,10 @@ export default function LoginSection({ onLoginSuccess, isDark }: LoginSectionPro
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="1230"
-                  className="csoj-input pl-11 pr-11"
+                  placeholder=""
+                  className="csoj-input !pl-12 !pr-12"
                   disabled={isLoading}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"
@@ -116,14 +110,6 @@ export default function LoginSection({ onLoginSuccess, isDark }: LoginSectionPro
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[var(--bg-hover)]/30 border border-[var(--border-element)]">
-              <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">Thông tin dùng thử</p>
-              <div className="flex flex-col gap-1 text-xs text-[var(--text-secondary)]">
-                <div className="flex justify-between"><span>Học sinh:</span> <strong>simon / 1230</strong></div>
-                <div className="flex justify-between"><span>Admin:</span> <strong>admin / 1230</strong></div>
               </div>
             </div>
 

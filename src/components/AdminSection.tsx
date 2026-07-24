@@ -39,10 +39,15 @@ export default function AdminSection({
     const fetchSubmissions = async () => {
       try {
         const res = await fetch(`/api/submissions?t=${Date.now()}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data) setSubmissions(data);
+        if (!res.ok) {
+          throw new Error(`Server returned ${res.status}`);
         }
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Server did not return JSON");
+        }
+        const data = await res.json();
+        if (data) setSubmissions(data);
       } catch (err) {
         console.error("Failed to fetch submissions:", err);
       }
@@ -74,46 +79,48 @@ export default function AdminSection({
   return (
     <div className="flex flex-col flex-1 bg-[var(--bg-app)]">
       {/* Admin Sidebar/Header */}
-      <header className="header-wrapper border-b border-[var(--border-element)] bg-[var(--bg-card)]/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="flex items-center gap-6">
-          <div className="logo-section py-2 px-4" onClick={() => setAdminTab('list')}>
-            <div className="logo-badge w-8 h-8 bg-indigo-500/10 text-indigo-500 border-indigo-500/20">
-              <Settings size={16} />
+      <header className="header-wrapper border-b border-[var(--border-element)] bg-[var(--bg-card)]/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm">
+        <div className="header-content h-12 md:h-14 px-4 md:px-10">
+          <div className="flex items-center gap-6">
+            <div className="logo-section py-2 px-0" onClick={() => setAdminTab('list')}>
+              <div className="logo-badge w-8 h-8 bg-indigo-500/10 text-indigo-500 border-indigo-500/20">
+                <Settings size={16} />
+              </div>
+              <span className="logo-text text-sm">Admin Panel</span>
             </div>
-            <span className="logo-text text-sm">Admin Panel</span>
+
+            <nav className="flex items-center gap-0.5">
+              <button 
+                onClick={() => setAdminTab('list')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-bold transition-all ${
+                  adminTab === 'list' || adminTab === 'add' ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <LayoutDashboard size={12} />
+                <span>Bài tập</span>
+              </button>
+              <button 
+                onClick={() => setAdminTab('submissions')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-bold transition-all ${
+                  adminTab === 'submissions' ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <Users size={12} />
+                <span>Kết quả</span>
+              </button>
+            </nav>
           </div>
 
-          <nav className="flex items-center gap-0.5">
-            <button 
-              onClick={() => setAdminTab('list')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-bold transition-all ${
-                adminTab === 'list' || adminTab === 'add' ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              <LayoutDashboard size={12} />
-              <span>Bài tập</span>
+          <div className="user-section">
+            <button onClick={onLogout} className="flex items-center gap-2 px-3 py-1.5 rounded text-red-500 hover:bg-red-500/10 transition-all font-bold text-[11px]">
+              <LogOut size={12} />
+              <span>Đăng xuất</span>
             </button>
-            <button 
-              onClick={() => setAdminTab('submissions')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-bold transition-all ${
-                adminTab === 'submissions' ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              <Users size={12} />
-              <span>Kết quả</span>
-            </button>
-          </nav>
-        </div>
-
-        <div className="user-section">
-          <button onClick={onLogout} className="flex items-center gap-2 px-3 py-1.5 rounded text-red-500 hover:bg-red-500/10 transition-all font-bold text-[11px]">
-            <LogOut size={12} />
-            <span>Đăng xuất</span>
-          </button>
+          </div>
         </div>
       </header>
 
-      <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full">
+      <main className="flex-1 app-container pt-4 pb-8 md:pt-6 md:pb-16 lg:pt-8 lg:pb-20">
         {adminTab === 'list' && (
           <AdminProblemList 
             problems={problems} 

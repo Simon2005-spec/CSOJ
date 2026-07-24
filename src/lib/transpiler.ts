@@ -160,12 +160,18 @@ export function transpileCppToJS(code: string): string {
   clean = clean.replace(/#include\s*[<"].*[>"]/g, '');
   clean = clean.replace(/using\s+namespace\s+std\s*;/g, '');
   clean = clean.replace(/std::/g, '');
+  
+  // Handle C++17 constexpr and type traits for the judge template fallback
+  clean = clean.replace(/\bif\s+constexpr\b/g, 'if');
+  clean = clean.replace(/\bconstexpr\b/g, 'const');
+  clean = clean.replace(/is_same_v\s*<\s*decltype\s*\([^)]+\)\s*,\s*bool\s*>/g, 'true'); 
+  clean = clean.replace(/is_same_v\s*<\s*[^,]+\s*,\s*bool\s*>/g, 'true');
 
   // Convert main function: int main(...) -> function main()
-  clean = clean.replace(/\b(int|void|long|long\s+long)\s+main\s*\(([^)]*)\)/g, 'function main()');
+  clean = clean.replace(/\b(int|void|long|long\s+long|long\s+long\s+int)\s+main\s*\(([^)]*)\)/g, 'function main()');
   
   // Convert standard types to general signatures
-  clean = clean.replace(/(vector<[a-zA-Z0-9_<>]+>|int|long\s+long|long|bool|void|string|char|double|float)\s+([a-zA-Z0-9_]+)\s*\(([^)]*)\)[\s\r\n]*\{/g, 'function $2($3) {');
+  clean = clean.replace(/\b(vector<[a-zA-Z0-9_<>]+>|int|long\s+long|long|bool|void|string|char|double|float|uint64_t|int64_t|size_t)\s+([a-zA-Z0-9_]+)\s*\(([^)]*)\)[\s\r\n]*\{/g, 'function $2($3) {');
   
   // Argument types cleanup, e.g. (vector<int>& nums, int target) -> (nums, target)
   clean = clean.replace(/function\s+([a-zA-Z0-9_]+)\s*\(([^)]*)\)/g, (match, fnName, argsStr) => {
@@ -195,7 +201,7 @@ export function transpileCppToJS(code: string): string {
   clean = clean.replace(/set<[^>]+>\s+([a-zA-Z0-9_,\s]+)\s*(=|;)/g, 'let $1 = new Set()$2');
 
   // Convert types in variable declarations
-  clean = clean.replace(/\b(int|double|float|char|string|bool|auto)\s+([a-zA-Z0-9_,\s=]+)(;|=)/g, (match, type, varList, endChar) => {
+  clean = clean.replace(/\b(unsigned\s+)?(long\s+long\s+int|long\s+long|long\s+int|long|int|double|float|char|string|bool|auto|uint64_t|int64_t|size_t)\s+([a-zA-Z0-9_,\s=]+)(;|=)/g, (match, unsigned, type, varList, endChar) => {
     return `let ${varList}${endChar}`;
   });
 
@@ -245,9 +251,8 @@ export function transpileCppToJS(code: string): string {
   clean = clean.replace(/\baccumulate\(([^.]+)\.begin\(\),\s*\1\.end\(\),\s*([^)]+)\)/g, '$1.reduce((a, b) => a + b, $2)');
 
   // loop headers
-  clean = clean.replace(/for\s*\(\s*int\s+/g, 'for (let ');
-  clean = clean.replace(/for\s*\(\s*auto\s+/g, 'for (let ');
-  clean = clean.replace(/for\s*\(\s*(char|int|auto|string)\s+([a-zA-Z0-9_]+)\s*:\s*([a-zA-Z0-9_]+)\s*\)/g, 'for (let $2 of $3)');
+  clean = clean.replace(/for\s*\(\s*(unsigned\s+)?(long\s+long\s+int|long\s+long|long\s+int|long|int|auto|size_t)\s+/g, 'for (let ');
+  clean = clean.replace(/for\s*\(\s*(char|int|long|long\s+long|long\s+int|auto|string)\s+([a-zA-Z0-9_]+)\s*:\s*([a-zA-Z0-9_]+)\s*\)/g, 'for (let $2 of $3)');
 
   // C++ Standard I/O transpilation
   clean = clean.replace(/ios_base\s*::\s*sync_with_stdio\s*\([^)]*\)\s*;?/g, '');
